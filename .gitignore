@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+package-lock.json
+
+# 构建产物
+dist/
+dist-packs/
+bundled-packs/
+build/icon.png
+
+# 签名密钥（绝不能提交！）
+build/pack-signing-key.pem
+*.pem
+*.key
+*.pfx
+
+# 内部工作文件
+_scratch/
+cankao/
+
+# 日志与临时文件
+*.log
+logs/
+
+# 系统文件
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+*.swp

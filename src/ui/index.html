@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>CopilotZh</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="titlebar">
+    <div class="brand">
+      <span class="logo">中</span>
+      <div class="brand-text">
+        <strong>CopilotZh</strong>
+        <span class="sub">GitHub Copilot 汉化工具</span>
+      </div>
+    </div>
+    <div class="env-badges">
+      <span class="badge" id="badge-version">版本 —</span>
+      <span class="badge" id="badge-elev">—</span>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- 步骤 1：目标应用 -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step-no">1</span> 目标应用</h2>
+        <button class="btn ghost" id="btn-locate">重新检测</button>
+      </div>
+      <div id="target-info" class="target-empty">正在检测 GitHub Copilot…</div>
+      <div class="row-actions">
+        <button class="btn ghost small" id="btn-choose">手动选择路径</button>
+      </div>
+    </section>
+
+    <!-- 步骤 2：选择模式 -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step-no">2</span> 选择汉化模式</h2>
+      </div>
+      <div id="engine-list" class="engine-list"></div>
+      <p class="hint" id="engine-hint">选择一种模式后，可先探测兼容性再执行。</p>
+    </section>
+
+    <!-- 步骤 3：字典包 -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step-no">3</span> 字典包</h2>
+        <div class="head-actions">
+          <button class="btn ghost small" id="btn-open-packs">打开目录</button>
+          <button class="btn ghost small" id="btn-check-update">检查更新</button>
+        </div>
+      </div>
+      <div id="pack-info" class="pack-empty">尚未安装字典包</div>
+      <div class="row-actions">
+        <button class="btn ghost small" id="btn-import-pack">导入字典包…</button>
+      </div>
+    </section>
+
+    <!-- 执行区 -->
+    <section class="card action-card">
+      <div class="run-row">
+        <button class="btn primary" id="btn-apply" disabled>执行汉化</button>
+        <button class="btn danger" id="btn-revert">还原英文</button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap" hidden>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text">准备中…</div>
+      </div>
+      <div id="result" class="result" hidden></div>
+    </section>
+
+    <!-- 残留审计与彻底清理 -->
+    <section class="card danger-card">
+      <div class="card-head">
+        <h2><span class="step-no">!</span> 残留检查与彻底清理</h2>
+        <button class="btn ghost small" id="btn-audit">重新检查</button>
+      </div>
+      <p class="hint" style="margin-top:0">
+        本工具可能会在系统中留下调试端口策略、用户数据等痕迹。点击下方按钮可查看当前残留并一键清除。
+      </p>
+      <div id="audit-info" class="audit-empty">尚未检查</div>
+      <div class="row-actions">
+        <button class="btn danger" id="btn-cleanall">彻底清理所有残留</button>
+        <button class="btn ghost small" id="btn-open-data">打开数据目录</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="statusbar">
+    <span id="status-text">就绪</span>
+    <span class="right" id="status-dir"></span>
+  </footer>
+
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>
