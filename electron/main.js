@@ -12,9 +12,11 @@ const pack = require('../src/core/dict/pack');
 const cleanup = require('../src/core/cleanup');
 const { Settings } = require('../src/core/settings');
 const { Watcher } = require('../src/core/watcher');
+const { applyOneClick } = require('../src/core/applyFlow');
 const autostart = require('../src/core/autostart');
 const { createEngines, supportedPlatforms } = require('../src/core/platform/engine');
 const { registerWin32 } = require('../src/core/platform/win32');
+const cdpWin = require('../src/core/platform/win32/runtimeInject');
 
 // 注册当前平台实现（跨平台扩展点）
 if (process.platform === 'win32') registerWin32();
@@ -432,18 +434,36 @@ ipcMain.handle('engine:status', async (_evt, { engineId, target }) => {
 ipcMain.handle('engine:apply', async (evt, { engineId, target, dict }) => {
   const engine = createEngines().find(e => e.id === engineId);
   if (!engine) return { ok: false, reason: '未知引擎: ' + engineId };
-  try {
-    const r = await engine.apply(target, dict, {
-      onProgress: (pct, msg) => {
-        evt.sender.send('engine:progress', { pct, msg });
-      },
-    });
 
-    // 汉化成功后，按设置决定是否同步启动 Copilot
+  const onProgress = (pct, msg) => {
+    if (!evt.sender.isDestroyed()) evt.sender.send('engine:progress', { pct, msg });
+  };
+
+  try {
+    // 模式 A 走「一键汉化」完整闭环：必要时重启 Copilot 让策略生效，
+    // 并以翻译器实际存活作为成功判据，避免「已汉化却报失败」。
+    if (engineId === 'runtime-inject') {
+      const r = await applyOneClick({
+        engine,
+        target,
+        dict,
+        launchCopilot,
+        findPids: require('../src/core/watcher').findCopilotPids,
+        onProgress,
+        allowRestart: settings ? settings.get('autoRestartCopilot') !== false : true,
+      });
+      if (r.ok) {
+        // 注入成功后同步监控器状态，避免它以为还没注入又打一次
+        if (watcher) watcher.markInjected();
+      }
+      return r;
+    }
+
+    // 其它引擎保持通用流程
+    const r = await engine.apply(target, dict, { onProgress });
     let launched = null;
     if (r.ok && settings && settings.get('launchCopilotAfterApply')) {
       const st = watcher ? watcher.status() : null;
-      // 只有 Copilot 没在运行时才启动，避免重复开实例
       if (!st || !st.copilotRunning) {
         const l = await launchCopilot();
         launched = l.ok ? { ok: true, exePath: l.exePath } : { ok: false, reason: l.reason };
@@ -452,6 +472,38 @@ ipcMain.handle('engine:apply', async (evt, { engineId, target, dict }) => {
       }
     }
     return { ...r, launched };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
+});
+
+// ---------------------------------------------------------------------------
+// IPC：权限与环境自检
+// ---------------------------------------------------------------------------
+
+ipcMain.handle('sys:check', async () => {
+  return {
+    elevated: cdpWin.isElevated(),
+    platform: process.platform,
+    port: cdpWin.DEFAULT_PORT,
+    policy: cdpWin.readPolicy('github.exe'),
+  };
+});
+
+ipcMain.handle('sys:relaunchAsAdmin', async () => {
+  // 以管理员身份重启自身
+  if (process.platform !== 'win32') return { ok: false, reason: '仅支持 Windows' };
+  const { execFile } = require('child_process');
+  const exe = process.execPath;
+  // Electron 开发模式下 process.execPath 是 electron.exe，需要带上应用路径
+  const args = app.isPackaged ? [] : [path.resolve(__dirname, '..')];
+  try {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `Start-Process -FilePath '${exe.replace(/'/g, "''")}' -ArgumentList '${args.join(' ').replace(/'/g, "''")}' -Verb RunAs`],
+      { windowsHide: true, timeout: 10000 },
+      () => { });
+    setTimeout(() => { isQuitting = true; app.quit(); }, 600);
+    return { ok: true };
   } catch (e) {
     return { ok: false, reason: e.message };
   }

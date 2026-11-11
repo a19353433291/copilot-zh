@@ -301,6 +301,21 @@ class Watcher extends EventEmitter {
     return { ok: this.injectedPid === pids[0], reason: this.lastError || undefined };
   }
 
+  /**
+   * 外部（一键汉化流程）已完成注入时调用，同步监控器状态。
+   * 避免监控器误判为「未注入」而重复注入造成界面闪烁。
+   */
+  async markInjected() {
+    const pids = await findCopilotPids();
+    this.copilotPids = pids;
+    this.copilotRunning = pids.length > 0;
+    this.injectedPid = pids[0] || null;
+    this.attempts = 0;
+    this.lastError = null;
+    this.lastInjectAt = new Date().toISOString();
+    this.emit('status', this.status());
+  }
+
   status() {
     return {
       running: this.running,

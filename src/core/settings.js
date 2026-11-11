@@ -18,6 +18,12 @@ const DEFAULTS = {
   launchCopilotAfterApply: true,
 
   /**
+   * 执行汉化时，若 Copilot 正在运行但调试端口未开启，是否自动重启它。
+   * 默认开启：否则用户必须手动关掉 Copilot 才能汉化，体验断裂。
+   */
+  autoRestartCopilot: true,
+
+  /**
    * 常驻监控：Copilot 启动时自动注入翻译。
    * 这是「形态 2」的核心开关。
    */

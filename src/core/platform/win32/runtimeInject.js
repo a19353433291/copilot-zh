@@ -552,6 +552,42 @@ async function queryTranslatorAlive(port = DEFAULT_PORT) {
 }
 
 /**
+ * 在页面中执行任意表达式（返回字符串结果）。
+ * 供 applyFlow 探测界面状态使用。
+ *
+ * @param {number} port
+ * @param {string} expression
+ * @returns {Promise<string|null>}
+ */
+async function evaluateInPage(port, expression) {
+  let targets;
+  try {
+    targets = await httpGetJson(port, '/json/list', 2000);
+  } catch (e) {
+    return null;
+  }
+  if (!Array.isArray(targets) || !targets.length) return null;
+  const page = targets.find(t => t.type === 'page');
+  if (!page) return null;
+
+  const client = new CDPClient(page.webSocketDebuggerUrl);
+  try {
+    await client.connect();
+    const res = await client.send('Runtime.evaluate', {
+      expression,
+      returnByValue: true,
+    });
+    if (!res || !res.result) return null;
+    const v = res.result.value;
+    return v === undefined || v === null ? null : String(v);
+  } catch (e) {
+    return null;
+  } finally {
+    client.close();
+  }
+}
+
+/**
  * 检查调试端口是否可访问（不注入，仅探测）。
  */
 async function isPortReady(port = DEFAULT_PORT) {
@@ -565,5 +601,5 @@ async function isPortReady(port = DEFAULT_PORT) {
 
 module.exports = {
   RuntimeInjectEngine, DEFAULT_PORT, isElevated, readPolicy, writePolicy, removePolicy,
-  queryTranslatorAlive, isPortReady,
+  queryTranslatorAlive, isPortReady, evaluateInPage,
 };

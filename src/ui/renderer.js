@@ -1,21 +1,31 @@
-// 渲染进程逻辑：驱动界面，全部通过 window.api（preload 白名单）与主进程通信。
+// 渲染进程逻辑：分页导航、自定义控件、一键汉化。
 'use strict';
 
 const $ = id => document.getElementById(id);
 
 const state = {
   env: null,
-  target: null,          // { exePath, version, signature }
-  engines: [],           // [{ id, displayName, capabilities }]
+  sys: null,             // { elevated, ... }
+  target: null,
+  engines: [],
   selectedEngine: null,
-  pack: null,            // { meta, counts, dict }
+  pack: null,
   busy: false,
-  settings: null,        // 当前设置
-  watcher: null,         // 监控状态
+  settings: null,
+  watcher: null,
+  page: 'home',
+};
+
+const PAGE_TITLES = {
+  home: '概览',
+  translate: '汉化',
+  dict: '字典包',
+  cleanup: '清理',
+  settings: '设置',
 };
 
 // ---------------------------------------------------------------------------
-// 工具
+// 基础工具
 // ---------------------------------------------------------------------------
 
 function setStatus(text) {
@@ -26,53 +36,172 @@ function setStatus(text) {
 function showResult(kind, text) {
   const el = $('result');
   el.hidden = false;
-  // 新样式使用 alert 前缀
   el.className = 'alert ' + (kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'info');
   el.textContent = text;
+  // 结果总是在概览页展示，自动切过去
+  if (state.page !== 'home') switchPage('home');
 }
 function clearResult() { $('result').hidden = true; }
 
 function setProgress(pct, msg) {
   const wrap = $('progress-wrap');
+  if (!wrap) return;
   wrap.hidden = false;
   $('progress-fill').style.width = Math.max(0, Math.min(100, pct)) + '%';
   if (msg) $('progress-text').textContent = msg;
 }
-function hideProgress() { $('progress-wrap').hidden = true; $('progress-fill').style.width = '0%'; }
+function hideProgress() {
+  const w = $('progress-wrap');
+  if (w) { w.hidden = true; $('progress-fill').style.width = '0%'; }
+}
 
-function setBusy(busy, text) {
-  state.busy = busy;
-  for (const id of ['btn-apply', 'btn-revert', 'btn-locate', 'btn-choose',
-                    'btn-import-pack', 'btn-check-update', 'btn-audit', 'btn-cleanall']) {
-    const b = $(id);
-    if (!b) continue;
-    b.disabled = busy || (id === 'btn-apply' && !canApply());
-  }
-  if (text) setStatus(text);
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function canApply() {
   return !!(state.target && state.selectedEngine && state.pack);
 }
 
+function setBusy(busy, text) {
+  state.busy = busy;
+  for (const id of ['btn-apply', 'btn-quick-apply', 'btn-revert', 'btn-quick-revert',
+                    'btn-locate', 'btn-choose', 'btn-import-pack', 'btn-check-update',
+                    'btn-audit', 'btn-cleanall']) {
+    const b = $(id);
+    if (!b) continue;
+    const isApply = (id === 'btn-apply' || id === 'btn-quick-apply');
+    b.disabled = busy || (isApply && !canApply());
+  }
+  if (text) setStatus(text);
+}
+
+// ---------------------------------------------------------------------------
+// 分页导航
+// ---------------------------------------------------------------------------
+
+function switchPage(page) {
+  state.page = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  document.querySelectorAll('.page').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  const title = $('page-title');
+  if (title) title.textContent = PAGE_TITLES[page] || '';
+  const pages = $('pages');
+  if (pages) pages.scrollTop = 0;
+}
+
+function initNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => switchPage(el.dataset.page));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 自定义下拉框
+// ---------------------------------------------------------------------------
+
+function initSelect(wrapId, onChange) {
+  const wrap = $(wrapId);
+  if (!wrap) return;
+  const trigger = wrap.querySelector('.select-trigger');
+  const menu = wrap.querySelector('.select-menu');
+  const label = wrap.querySelector('.select-label');
+
+  const close = () => {
+    menu.hidden = true;
+    trigger.classList.remove('open');
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = menu.hidden;
+    // 关闭其它下拉框
+    document.querySelectorAll('.select-menu').forEach(m => { m.hidden = true; });
+    document.querySelectorAll('.select-trigger').forEach(t => t.classList.remove('open'));
+    if (willOpen) {
+      menu.hidden = false;
+      trigger.classList.add('open');
+    }
+  });
+
+  menu.querySelectorAll('.select-option').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = opt.dataset.value;
+      const text = opt.textContent.trim();
+      trigger.dataset.value = val;
+      label.textContent = text;
+      menu.querySelectorAll('.select-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      close();
+      if (onChange) onChange(val);
+    });
+  });
+
+  document.addEventListener('click', close);
+  return {
+    set(value) {
+      const opt = menu.querySelector(`.select-option[data-value="${value}"]`);
+      if (!opt) return;
+      trigger.dataset.value = value;
+      label.textContent = opt.textContent.trim();
+      menu.querySelectorAll('.select-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+    },
+    setEnabled(on) { trigger.disabled = !on; },
+  };
+}
+
+let intervalSelect = null;
+
 // ---------------------------------------------------------------------------
 // 初始化
 // ---------------------------------------------------------------------------
 
 async function init() {
+  initNav();
+
   state.env = await window.api.env();
-  $('badge-version').textContent = 'v' + state.env.appVersion;
+  $('brand-version').textContent = 'v' + state.env.appVersion;
   $('status-dir').textContent = state.env.packsDir || '';
 
-  const engineHint = $('engine-hint');
-  if (!state.env.supportedPlatforms.includes(state.env.platform)) {
-    engineHint.textContent = `当前平台（${state.env.platform}）暂不支持。本工具目前支持：${state.env.supportedPlatforms.join(', ')}。`;
-  }
+  await checkAdmin();
 
   await Promise.all([locateTarget(), loadEngines(), loadPack()]);
   await loadSettings();
+  await refreshAudit();
   renderApplyState();
+
+  // 默认停在概览页
+  switchPage('home');
 }
+
+async function checkAdmin() {
+  try {
+    state.sys = await window.api.sysCheck();
+  } catch (e) {
+    state.sys = { elevated: false };
+  }
+  const hint = $('admin-hint');
+  const btn = $('btn-elevate');
+  if (state.sys && state.sys.elevated) {
+    hint.hidden = true;
+    btn.hidden = true;
+  } else {
+    hint.hidden = false;
+    btn.hidden = false;
+  }
+}
+
+$('btn-elevate').addEventListener('click', async () => {
+  await window.api.relaunchAsAdmin();
+});
 
 // ---------------------------------------------------------------------------
 // 常驻监控状态
@@ -80,9 +209,9 @@ async function init() {
 
 function renderWatcher(st) {
   state.watcher = st;
-  const dot = $('watch-dot');
-  const title = $('watch-text');
-  const sub = $('watch-sub');
+  const dot = $('home-dot');
+  const title = $('home-title');
+  const sub = $('home-sub');
   const pill = $('badge-watcher');
   const btnInject = $('btn-inject-now');
   const btnLaunch = $('btn-launch-copilot');
@@ -98,10 +227,8 @@ function renderWatcher(st) {
     sub.textContent = '可在设置中开启「常驻监控自动汉化」';
     pill.className = 'pill';
     pill.textContent = '已关闭';
-    if (st.copilotRunning) btnLaunch.hidden = true;
     return;
   }
-
   if (!st.copilotRunning) {
     dot.classList.add('ok');
     title.textContent = '监控运行中';
@@ -111,12 +238,12 @@ function renderWatcher(st) {
     btnLaunch.hidden = false;
     return;
   }
-
   if (st.injected) {
     dot.classList.add('ok');
+    const t = st.lastInjectAt
+      ? new Date(st.lastInjectAt).toLocaleTimeString('zh-CN', { hour12: false }) : '';
     title.textContent = '界面已汉化';
-    const t = st.lastInjectAt ? new Date(st.lastInjectAt).toLocaleTimeString('zh-CN', { hour12: false }) : '';
-    sub.textContent = `Copilot 已在运行${t ? ' · 汉化于 ' + t : ''}`;
+    sub.textContent = `Copilot 运行中${t ? ' · 汉化于 ' + t : ''}`;
     pill.className = 'pill ok';
     pill.textContent = '已汉化';
   } else {
@@ -128,6 +255,7 @@ function renderWatcher(st) {
   }
   btnInject.hidden = false;
 }
+
 $('btn-inject-now').addEventListener('click', async () => {
   setStatus('正在注入…');
   const r = await window.api.injectNow();
@@ -142,113 +270,6 @@ $('btn-launch-copilot').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 设置
-// ---------------------------------------------------------------------------
-
-async function loadSettings() {
-  const r = await window.api.getSettings();
-  state.settings = r.data;
-
-  $('set-launch-after-apply').checked = !!r.data.launchCopilotAfterApply;
-  $('set-auto-inject').checked = !!r.data.autoInjectOnStart;
-  $('set-interval').value = String(r.data.watchIntervalMs);
-  $('set-run-at-login').checked = !!r.data.runAtLogin;
-  $('set-minimize-tray').checked = !!r.data.minimizeToTray;
-  $('settings-datadir').textContent = state.env.userDir || '';
-
-  // 开机自启在非 Windows 下不可用
-  if (!r.autostartSupported) {
-    $('set-run-at-login').disabled = true;
-    $('autostart-hint').textContent = '当前平台不支持';
-  }
-
-  const intervalSel = $('set-interval');
-  intervalSel.disabled = !r.data.autoInjectOnStart;
-
-  if (r.watcher) renderWatcher(r.watcher);
-}
-
-function flashSaved(text) {
-  const el = $('settings-saved-hint');
-  el.textContent = text || '已保存';
-  clearTimeout(flashSaved._t);
-  flashSaved._t = setTimeout(() => { el.textContent = ''; }, 1800);
-}
-
-async function patchSettings(patch) {
-  const r = await window.api.setSettings(patch);
-  if (!r.ok) {
-    showResult('err', r.reason || '保存设置失败');
-    await loadSettings();
-    return;
-  }
-  state.settings = r.data;
-  flashSaved();
-  // 间隔变化后需要刷新监控显示
-  const st = await window.api.watcherStatus();
-  renderWatcher(st);
-}
-
-function openSettings() {
-  $('settings-modal').hidden = false;
-  loadSettings();
-}
-function closeSettings() {
-  $('settings-modal').hidden = true;
-}
-
-$('btn-settings').addEventListener('click', openSettings);
-$('btn-settings-close').addEventListener('click', closeSettings);
-$('btn-settings-done').addEventListener('click', closeSettings);
-$('settings-modal').addEventListener('click', (e) => {
-  if (e.target === $('settings-modal')) closeSettings();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !$('settings-modal').hidden) closeSettings();
-});
-
-$('set-launch-after-apply').addEventListener('change', (e) => {
-  patchSettings({ launchCopilotAfterApply: e.target.checked });
-});
-$('set-auto-inject').addEventListener('change', (e) => {
-  $('set-interval').disabled = !e.target.checked;
-  patchSettings({ autoInjectOnStart: e.target.checked });
-});
-$('set-interval').addEventListener('change', (e) => {
-  patchSettings({ watchIntervalMs: Number(e.target.value) });
-});
-$('set-run-at-login').addEventListener('change', async (e) => {
-  const want = e.target.checked;
-  await patchSettings({ runAtLogin: want });
-});
-$('set-minimize-tray').addEventListener('change', (e) => {
-  patchSettings({ minimizeToTray: e.target.checked });
-});
-$('btn-open-data-2').addEventListener('click', () => window.api.openDataFolder());
-$('btn-reset-settings').addEventListener('click', async () => {
-  const r = await window.api.resetSettings();
-  if (r.ok) { flashSaved('已恢复默认'); await loadSettings(); }
-});
-
-// 监控状态实时推送
-window.api.onWatcherStatus((st) => renderWatcher(st));
-window.api.onWatcherInjected((info) => {
-  setStatus(`已自动汉化 Copilot（${info.replaced} 处）`);
-});
-window.api.onWatcherError((e) => {
-  setStatus('监控提示：' + e.message);
-});
-
-// 首次使用：策略刚写入，需要重启 Copilot 才生效
-window.api.onWatcherPolicyWritten((info) => {
-  showResult('info',
-    info.reason +
-    '\n\n请关闭 GitHub Copilot 后重新打开，之后就会自动汉化，无需再手动操作。');
-  setStatus('需要重启 GitHub Copilot 一次');
-});
-const btnRestart = null;
-
-// ---------------------------------------------------------------------------
 // 目标应用
 // ---------------------------------------------------------------------------
 
@@ -261,42 +282,71 @@ async function locateTarget() {
     state.target = null;
     box.className = 'row-value';
     box.innerHTML = '<span class="warn-text">未自动找到，请手动选择</span>';
-    setStatus('未找到目标应用');
+    $('target-path').textContent = '';
+    updateStats();
     renderApplyState();
     return;
   }
   state.target = { exePath: r.exePath, version: r.version, signature: r.signature };
   renderTarget();
-  setStatus('已找到 GitHub Copilot');
+  updateStats();
   renderApplyState();
 }
 
 function renderTarget() {
   const t = state.target;
   const box = $('target-info');
+  const pathEl = $('target-path');
   if (!t) {
     box.className = 'row-value dim';
     box.textContent = '未选择目标应用';
+    pathEl.textContent = '';
     return;
   }
   box.className = 'row-value';
   const sigOk = t.signature === 'Valid';
   const sigWarn = t.signature === 'HashMismatch';
-  const sigSpan = sigOk
-    ? '<span class="inline-ok">签名有效</span>'
-    : sigWarn
-      ? '<span class="inline-danger">签名已失效</span>'
+  const sigSpan = sigOk ? '<span class="inline-ok">签名有效</span>'
+    : sigWarn ? '<span class="inline-danger">签名已失效</span>'
       : '<span class="inline-muted">签名未知</span>';
   const name = t.exePath.split('\\').pop();
-  box.innerHTML = `${escapeHtml(name)} ${sigSpan} <span class="inline-muted">· v${escapeHtml(t.version || '?')}</span>`;
-  box.title = t.exePath;
+  box.innerHTML = `${escapeHtml(name)} ${sigSpan}`;
+  pathEl.textContent = t.exePath;
 }
 
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+function updateStats() {
+  const t = state.target;
+  $('stat-version').textContent = t && t.version ? 'v' + t.version : '—';
+  const s = $('stat-sign');
+  if (t && t.signature === 'Valid') { s.textContent = '有效'; s.className = 'stat-value ok'; }
+  else if (t && t.signature === 'HashMismatch') { s.textContent = '已失效'; s.className = 'stat-value err'; }
+  else { s.textContent = '—'; s.className = 'stat-value'; }
+
+  const d = $('stat-dict');
+  if (state.pack) {
+    d.textContent = (state.pack.counts.texts || 0) + ' 条';
+    d.className = 'stat-value';
+  } else {
+    d.textContent = '无';
+    d.className = 'stat-value warn';
+  }
 }
+
+$('btn-locate').addEventListener('click', async () => {
+  setBusy(true, '正在检测…');
+  await locateTarget();
+  setBusy(false);
+});
+
+$('btn-choose').addEventListener('click', async () => {
+  const r = await window.api.chooseApp();
+  if (!r.ok) return;
+  state.target = { exePath: r.exePath, version: r.version, signature: r.signature };
+  renderTarget();
+  updateStats();
+  renderApplyState();
+  setStatus('已手动指定应用路径');
+});
 
 // ---------------------------------------------------------------------------
 // 引擎
@@ -304,32 +354,28 @@ function escapeHtml(s) {
 
 async function loadEngines() {
   state.engines = await window.api.listEngines();
-  // 默认选中第一个可用引擎，避免用户看到「执行汉化」灰着不知为何
   if (!state.selectedEngine && state.engines.length) {
     state.selectedEngine = state.engines[0].id;
-    if (state.selectedEngine === 'runtime-inject') {
-      $('engine-hint').textContent = '需要以管理员身份运行本工具才能开启调试端口。';
-    }
+    $('engine-hint').textContent = '需要管理员权限才能开启调试端口。';
   }
   renderEngines();
   renderApplyState();
 }
 
-const ENGINE_DESC = {
+const ENGINE_INFO = {
   'runtime-inject': {
-    desc: '通过 WebView2 调试端口，把翻译实时注入界面。不修改应用本体。',
+    desc: '通过 WebView2 调试端口把翻译实时注入界面。不修改应用本体。',
     tags: (c) => [
-      c.modifiesApp ? { t: '修改本体', bad: true } : { t: '不改本体', good: true },
+      { t: '不改本体', good: true },
       { t: '签名保持完好', good: true },
       { t: '升级不失效', good: true },
       { t: '字典即时生效', good: true },
       { t: '需管理员权限', bad: true },
-      { t: '需常驻进程', bad: true },
     ],
   },
   'binary-patch': {
     desc: '解开应用内嵌资源、替换文案后重新压缩写回。一次生效，无需常驻。',
-    tags: (c) => [
+    tags: () => [
       { t: '修改本体', bad: true },
       { t: '签名会失效', bad: true },
       { t: '每次更新需重打', bad: true },
@@ -345,13 +391,12 @@ function renderEngines() {
     return;
   }
   box.innerHTML = state.engines.map(e => {
-    const meta = ENGINE_DESC[e.id] || { desc: '', tags: () => [] };
+    const meta = ENGINE_INFO[e.id] || { desc: '', tags: () => [] };
     const tags = meta.tags(e.capabilities)
       .map(x => `<span class="tag ${x.good ? 'good' : (x.bad ? 'bad' : '')}">${escapeHtml(x.t)}</span>`)
       .join('');
     const sel = state.selectedEngine === e.id ? ' selected' : '';
-    const checked = state.selectedEngine === e.id ? 'true' : 'false';
-    return `<div class="engine-item${sel}" data-engine="${escapeHtml(e.id)}" role="radio" aria-checked="${checked}" tabindex="0">
+    return `<div class="engine-item${sel}" data-engine="${escapeHtml(e.id)}" role="radio" tabindex="0">
       <div class="radio-mark"></div>
       <div class="engine-body">
         <div class="engine-title">${escapeHtml(e.displayName)}</div>
@@ -372,8 +417,7 @@ function renderEngines() {
 function selectEngine(id) {
   state.selectedEngine = id;
   $('engine-hint').textContent = id === 'runtime-inject'
-    ? '需要以管理员身份运行本工具才能开启调试端口。'
-    : '';
+    ? '需要管理员权限才能开启调试端口。' : '';
   renderEngines();
   renderApplyState();
 }
@@ -385,88 +429,152 @@ function selectEngine(id) {
 async function loadPack() {
   const r = await window.api.currentPack();
   const box = $('pack-info');
+  const hint = $('pack-hint');
   if (!r.ok) {
     state.pack = null;
     box.className = 'row-value dim';
     box.textContent = '尚未安装字典包';
+    hint.textContent = '';
+    updateStats();
     renderApplyState();
     return;
   }
   state.pack = r;
   renderPack();
+  updateStats();
   renderApplyState();
 }
 
 function renderPack() {
   const p = state.pack;
   const box = $('pack-info');
-  box.className = 'row-value';
+  const hint = $('pack-hint');
   const m = p.meta || {};
   const c = p.counts || {};
+  box.className = 'row-value';
   box.innerHTML = `v${escapeHtml(m.packVersion || '?')} ` +
-    `<span class="inline-muted">· ${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则</span> ` +
     `<span class="inline-ok">已校验</span>`;
-  renderApplyState();
+  hint.textContent = `${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则 · ${c.attrs || 0} 条属性`;
 }
 
 // ---------------------------------------------------------------------------
-// 执行
+// 设置
+// ---------------------------------------------------------------------------
+
+async function loadSettings() {
+  const r = await window.api.getSettings();
+  state.settings = r.data;
+
+  $('set-launch-after-apply').checked = !!r.data.launchCopilotAfterApply;
+  $('set-auto-restart').checked = r.data.autoRestartCopilot !== false;
+  $('set-auto-inject').checked = !!r.data.autoInjectOnStart;
+  $('set-run-at-login').checked = !!r.data.runAtLogin;
+  $('set-minimize-tray').checked = !!r.data.minimizeToTray;
+  $('settings-datadir').textContent = state.env.userDir || '';
+
+  if (!intervalSelect) {
+    intervalSelect = initSelect('sel-interval', (val) => {
+      patchSettings({ watchIntervalMs: Number(val) });
+    });
+  }
+  intervalSelect.set(String(r.data.watchIntervalMs));
+  intervalSelect.setEnabled(!!r.data.autoInjectOnStart);
+
+  if (!r.autostartSupported) {
+    $('set-run-at-login').disabled = true;
+    $('autostart-hint').textContent = '当前平台不支持';
+  }
+  if (r.watcher) renderWatcher(r.watcher);
+}
+
+async function patchSettings(patch) {
+  const r = await window.api.setSettings(patch);
+  if (!r.ok) {
+    showResult('err', r.reason || '保存设置失败');
+    await loadSettings();
+    return;
+  }
+  state.settings = r.data;
+  setStatus('设置已保存');
+}
+
+$('set-launch-after-apply').addEventListener('change', (e) =>
+  patchSettings({ launchCopilotAfterApply: e.target.checked }));
+
+$('set-auto-restart').addEventListener('change', (e) =>
+  patchSettings({ autoRestartCopilot: e.target.checked }));
+
+$('set-auto-inject').addEventListener('change', (e) => {
+  if (intervalSelect) intervalSelect.setEnabled(e.target.checked);
+  patchSettings({ autoInjectOnStart: e.target.checked });
+});
+
+$('set-run-at-login').addEventListener('change', (e) =>
+  patchSettings({ runAtLogin: e.target.checked }));
+
+$('set-minimize-tray').addEventListener('change', (e) =>
+  patchSettings({ minimizeToTray: e.target.checked }));
+
+$('btn-open-data-2').addEventListener('click', () => window.api.openDataFolder());
+
+$('btn-reset-settings').addEventListener('click', async () => {
+  const r = await window.api.resetSettings();
+  if (r.ok) { setStatus('已恢复默认设置'); await loadSettings(); }
+});
+
+// ---------------------------------------------------------------------------
+// 执行汉化
 // ---------------------------------------------------------------------------
 
 function renderApplyState() {
-  const btn = $('btn-apply');
-  if (!btn) return;
-  btn.disabled = state.busy || !canApply();
+  const ok = canApply() && !state.busy;
+  for (const id of ['btn-apply', 'btn-quick-apply']) {
+    const b = $(id);
+    if (b) b.disabled = !ok;
+  }
 }
 
-async function doApply() {
-  if (!canApply()) return;
+async function doApply(btnId) {
+  if (!canApply() || state.busy) return;
+
+  // 未提权时直接提示，避免走完流程才在最后失败
+  if (state.sys && state.sys.elevated === false) {
+    showResult('err',
+      '需要管理员权限才能汉化。\n\n请点击右上角「以管理员身份重启」，或关闭程序后右键选择「以管理员身份运行」。');
+    return;
+  }
+
   clearResult();
-  setBusy(true, '正在执行汉化…');
-  $('btn-apply').classList.add('loading');
+  setBusy(true, '正在汉化…');
+  const btn = $(btnId);
+  if (btn) btn.classList.add('loading');
   setProgress(0, '准备中…');
 
   const target = { exePath: state.target.exePath, version: state.target.version };
 
-  // 先探测
-  const probe = await window.api.probe(state.selectedEngine, target);
-  if (!probe.ok) {
-    $('btn-apply').classList.remove('loading');
-    setBusy(false, '探测失败');
-    hideProgress();
-    showResult('err', '无法执行：' + (probe.reason || '未知原因'));
-    return;
-  }
-
   const r = await window.api.apply(state.selectedEngine, target, state.pack.dict);
-  $('btn-apply').classList.remove('loading');
-  setBusy(false, r.ok ? '汉化完成' : '汉化失败');
+
+  if (btn) btn.classList.remove('loading');
+  setBusy(false, r.ok ? '汉化完成' : '汉化未完成');
 
   if (r.ok) {
     setProgress(100, '完成');
     const stats = r.stats || {};
-    let msg =
-      `汉化已应用。替换 ${stats.replaced || 0} 处文案` +
-      (stats.port ? `（调试端口 ${stats.port}）` : '') + '。';
-
-    if (r.launched) {
-      if (r.launched.ok && r.launched.skipped) {
-        msg += '\nGitHub Copilot 已在运行，请切换到它的窗口查看效果。';
-      } else if (r.launched.ok) {
-        msg += '\n已同步启动 GitHub Copilot，请稍候查看中文界面。';
-      } else {
-        msg += '\n自动启动 Copilot 失败：' + (r.launched.reason || '未知原因');
-      }
-    } else {
-      msg += '\n请切换到 GitHub Copilot 窗口查看效果；若界面无变化，请重启 Copilot 后再次执行。';
-    }
-    showResult('ok', msg);
-    await refreshStatus();
+    const acts = (r.actions || []).length ? '\n' + r.actions.join('\n') : '';
+    showResult('ok',
+      `汉化已生效：替换 ${stats.replaced || 0} 处文案${acts}\n\n已切换验证通过，可以正常使用 GitHub Copilot。`);
   } else {
     hideProgress();
-    showResult('err', '汉化失败：' + (r.reason || '未知原因'));
+    let msg = r.reason || '未知原因';
+    if (r.code === 'NO_ADMIN') {
+      msg += '\n\n请点击右上角「以管理员身份重启」。';
+    }
+    showResult('err', msg);
   }
 }
+
+$('btn-apply').addEventListener('click', () => doApply('btn-apply'));
+$('btn-quick-apply').addEventListener('click', () => doApply('btn-quick-apply'));
 
 async function doRevert() {
   if (!state.target || !state.selectedEngine) {
@@ -478,34 +586,16 @@ async function doRevert() {
   const target = { exePath: state.target.exePath, version: state.target.version };
   const r = await window.api.revert(state.selectedEngine, target);
   setBusy(false, r.ok ? '已还原' : '还原失败');
-  if (r.ok) showResult('info', '已还原。' + (r.reason || ''));
+  if (r.ok) showResult('info', '已还原英文界面。' + (r.reason || ''));
   else showResult('err', '还原失败：' + (r.reason || '未知原因'));
-  await refreshStatus();
 }
 
-async function refreshStatus() {
-  // 状态展示统一由常驻监控（renderWatcher）负责，此处不再重复更新顶部状态
-  return;
-}
+$('btn-revert').addEventListener('click', doRevert);
+$('btn-quick-revert').addEventListener('click', doRevert);
 
 // ---------------------------------------------------------------------------
-// 事件绑定
+// 字典包操作
 // ---------------------------------------------------------------------------
-
-$('btn-locate').addEventListener('click', async () => {
-  setBusy(true, '正在检测…');
-  await locateTarget();
-  setBusy(false);
-});
-
-$('btn-choose').addEventListener('click', async () => {
-  const r = await window.api.chooseApp();
-  if (!r.ok) return;
-  state.target = { exePath: r.exePath, version: r.version, signature: r.signature };
-  renderTarget();
-  renderApplyState();
-  setStatus('已手动指定应用路径');
-});
 
 $('btn-import-pack').addEventListener('click', async () => {
   setBusy(true, '正在导入字典包…');
@@ -528,26 +618,23 @@ $('btn-check-update').addEventListener('click', async () => {
 
 $('btn-open-packs').addEventListener('click', () => window.api.openPacksFolder());
 
-$('btn-apply').addEventListener('click', doApply);
-$('btn-revert').addEventListener('click', doRevert);
-
 // ---------------------------------------------------------------------------
-// 残留审计与彻底清理
+// 残留清理
 // ---------------------------------------------------------------------------
 
 async function refreshAudit() {
   const box = $('audit-info');
-  box.className = 'row-value audit-box';
+  box.className = 'audit-box';
   box.textContent = '正在检查…';
   const r = await window.api.cleanupAudit();
   if (!r.total) {
-    box.className = 'row-value audit-box clean';
+    box.className = 'audit-box clean';
     box.textContent = '未发现残留，系统干净。';
     $('btn-cleanall').disabled = true;
     return;
   }
   $('btn-cleanall').disabled = false;
-  box.className = 'row-value audit-box';
+  box.className = 'audit-box';
   const rows = r.traces.map(t => {
     const details = t.items.map(i => {
       if (i.path) return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}`;
@@ -561,8 +648,8 @@ async function refreshAudit() {
   }).join('');
   box.innerHTML = `<div class="audit-head">发现 ${r.total} 项残留</div>${rows}`;
 }
-$('btn-audit').addEventListener('click', refreshAudit);
 
+$('btn-audit').addEventListener('click', refreshAudit);
 $('btn-open-data').addEventListener('click', () => window.api.openDataFolder());
 
 $('btn-cleanall').addEventListener('click', async () => {
@@ -571,15 +658,13 @@ $('btn-cleanall').addEventListener('click', async () => {
   setBusy(true, '正在清理…');
   const r = await window.api.cleanupAll();
   setBusy(false, r.ok ? '清理完成' : '部分清理失败');
-  clearResult();
   const lines = [];
   if (r.cleaned && r.cleaned.length) {
-    lines.push('已清理 ' + r.cleaned.length + ' 项：');
-    r.cleaned.slice(0, 12).forEach(c => lines.push('  · ' + c));
-    if (r.cleaned.length > 12) lines.push(`  … 共 ${r.cleaned.length} 项`);
+    lines.push('已清理 ' + r.cleaned.length + ' 项');
+    r.cleaned.slice(0, 10).forEach(c => lines.push('  · ' + c));
   }
   if (r.errors && r.errors.length) {
-    lines.push('失败 ' + r.errors.length + ' 项：');
+    lines.push('失败 ' + r.errors.length + ' 项');
     r.errors.forEach(e => lines.push('  · ' + e));
   }
   showResult(r.ok ? 'ok' : 'err', lines.join('\n') || '未发现需要清理的内容。');
@@ -587,8 +672,23 @@ $('btn-cleanall').addEventListener('click', async () => {
   await loadPack();
 });
 
-window.api.onProgress(({ pct, msg }) => setProgress(pct, msg));
+// ---------------------------------------------------------------------------
+// 事件监听
+// ---------------------------------------------------------------------------
 
-init().then(refreshAudit).catch(e => {
+window.api.onProgress(({ pct, msg }) => setProgress(pct, msg));
+window.api.onWatcherStatus((st) => renderWatcher(st));
+window.api.onWatcherInjected((info) => {
+  setStatus(`已自动汉化 Copilot（${info.replaced} 处）`);
+});
+window.api.onWatcherError((e) => {
+  setStatus('监控提示：' + e.message);
+});
+window.api.onWatcherPolicyWritten((info) => {
+  showResult('info',
+    info.reason + '\n\n请关闭 GitHub Copilot 后重新打开，之后会自动汉化。');
+});
+
+init().catch(e => {
   showResult('err', '初始化失败：' + e.message);
 });

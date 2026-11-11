@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('api', {
   cleanupAll: () => ipcRenderer.invoke('cleanup:cleanAll'),
   openDataFolder: () => ipcRenderer.invoke('cleanup:openDataFolder'),
 
+  // 环境自检
+  sysCheck: () => ipcRenderer.invoke('sys:check'),
+  relaunchAsAdmin: () => ipcRenderer.invoke('sys:relaunchAsAdmin'),
+
   // 设置
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
