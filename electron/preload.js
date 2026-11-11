@@ -41,4 +41,34 @@ contextBridge.exposeInMainWorld('api', {
   cleanupAudit: () => ipcRenderer.invoke('cleanup:audit'),
   cleanupAll: () => ipcRenderer.invoke('cleanup:cleanAll'),
   openDataFolder: () => ipcRenderer.invoke('cleanup:openDataFolder'),
+
+  // 设置
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
+  resetSettings: () => ipcRenderer.invoke('settings:reset'),
+
+  // 常驻监控
+  watcherStatus: () => ipcRenderer.invoke('watcher:status'),
+  injectNow: () => ipcRenderer.invoke('watcher:injectNow'),
+  launchCopilot: () => ipcRenderer.invoke('watcher:launchCopilot'),
+  onWatcherStatus: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('watcher:status', h);
+    return () => ipcRenderer.removeListener('watcher:status', h);
+  },
+  onWatcherInjected: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('watcher:injected', h);
+    return () => ipcRenderer.removeListener('watcher:injected', h);
+  },
+  onWatcherError: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('watcher:error', h);
+    return () => ipcRenderer.removeListener('watcher:error', h);
+  },
+  onWatcherPolicyWritten: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('watcher:policy-written', h);
+    return () => ipcRenderer.removeListener('watcher:policy-written', h);
+  },
 });

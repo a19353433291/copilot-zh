@@ -403,36 +403,61 @@ class RuntimeInjectEngine extends I18nEngine {
   }
 
   /**
-   * 应用：写策略 → 确保应用运行 → 连接 CDP → 注入
+   * 应用汉化。
+   *
+   * @param {object} target { exePath, version }
+   * @param {object} dict   字典
+   * @param {object} opts
+   *   - onProgress(pct, msg)
+   *   - requirePolicy: 是否强制写策略（默认 true）。
+   *       常驻监控场景传 false：策略已由用户首次「执行汉化」写入，
+   *       若每次都写会频繁触发 UAC / 反复改动注册表。
+   *   - ensurePolicy: 若策略缺失则补写（默认 true）
    */
   async apply(target, dict, opts = {}) {
     const onProgress = opts.onProgress || (() => {});
-    const exeName = path.basename(target.exePath);
+    const requirePolicy = opts.requirePolicy !== false;
+    const ensurePolicy = opts.ensurePolicy !== false;
+    const exeName = path.basename(target.exePath || 'github.exe');
 
     onProgress(5, '检查权限…');
-    if (!isElevated()) {
-      return { ok: false, reason: '需要管理员权限才能开启调试端口' };
+    if (requirePolicy) {
+      if (!isElevated()) {
+        return { ok: false, reason: '需要管理员权限才能开启调试端口' };
+      }
+      onProgress(15, '配置调试端口…');
+      const w = writePolicy(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
+      if (!w.ok) return { ok: false, reason: w.reason };
+    } else if (ensurePolicy) {
+      // 监控模式：仅在策略缺失时补写，避免无谓改动
+      const cur = readPolicy(exeName);
+      if (!cur || !String(cur).includes(`--remote-debugging-port=${DEFAULT_PORT}`)) {
+        if (!isElevated()) {
+          return { ok: false, reason: '调试端口策略缺失，且当前没有管理员权限补写' };
+        }
+        const w = writePolicy(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
+        if (!w.ok) return { ok: false, reason: w.reason };
+      }
     }
-
-    onProgress(15, '配置调试端口…');
-    const w = writePolicy(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
-    if (!w.ok) return { ok: false, reason: w.reason };
 
     onProgress(30, '连接应用界面…');
     // 等端口就绪（应用需已启动）
     let targets = null;
-    for (let i = 0; i < 20; i++) {
+    const maxWait = opts.maxWaitMs || 10000;
+    const steps = Math.ceil(maxWait / 400);
+    for (let i = 0; i < steps; i++) {
       try {
-        targets = await httpGetJson(DEFAULT_PORT, '/json/list');
+        targets = await httpGetJson(DEFAULT_PORT, '/json/list', 2000);
         if (targets && targets.length) break;
       } catch (e) { /* 未就绪 */ }
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 400));
     }
     if (!targets || !targets.length) {
       return {
         ok: false,
-        reason:
-          '未能连接应用界面。请确认：① GitHub Copilot 已启动 ② 启动后等待数秒 ③ 完全退出后重启一次以加载调试端口策略',
+        reason: requirePolicy
+          ? '未能连接应用界面。请确认：① GitHub Copilot 已启动 ② 启动后等待数秒 ③ 完全退出后重启一次以加载调试端口策略'
+          : '未能连接应用界面（调试端口未就绪）',
       };
     }
 
@@ -489,4 +514,56 @@ class RuntimeInjectEngine extends I18nEngine {
   }
 }
 
-module.exports = { RuntimeInjectEngine, DEFAULT_PORT, isElevated, readPolicy, writePolicy, removePolicy };
+// ---------------------------------------------------------------------------
+// 供常驻监控使用的轻量查询
+// ---------------------------------------------------------------------------
+
+/**
+ * 检查页面里的翻译器是否仍然存活。
+ * 用于监控器判断「页面是否被重载」，避免无谓的重复注入。
+ *
+ * @param {number} port
+ * @returns {Promise<boolean|null>} true=存活, false=已丢失, null=无法连接
+ */
+async function queryTranslatorAlive(port = DEFAULT_PORT) {
+  let targets;
+  try {
+    targets = await httpGetJson(port, '/json/list', 2000);
+  } catch (e) {
+    return null;   // 端口不通
+  }
+  if (!Array.isArray(targets) || !targets.length) return null;
+  const page = targets.find(t => t.type === 'page');
+  if (!page) return null;
+
+  const client = new CDPClient(page.webSocketDebuggerUrl);
+  try {
+    await client.connect();
+    const res = await client.send('Runtime.evaluate', {
+      expression: 'typeof window.__copilotZh !== "undefined" && !!window.__copilotZh.apply',
+      returnByValue: true,
+    });
+    return res && res.result ? res.result.value === true : false;
+  } catch (e) {
+    return null;
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * 检查调试端口是否可访问（不注入，仅探测）。
+ */
+async function isPortReady(port = DEFAULT_PORT) {
+  try {
+    const t = await httpGetJson(port, '/json/list', 2000);
+    return Array.isArray(t) && t.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+module.exports = {
+  RuntimeInjectEngine, DEFAULT_PORT, isElevated, readPolicy, writePolicy, removePolicy,
+  queryTranslatorAlive, isPortReady,
+};

@@ -136,6 +136,35 @@ function dirTrace(id, label, dirPath) {
 }
 
 /**
+ * 开机自启注册项（设置里的「开机自动启动」写入）。
+ */
+const runAtLogin = {
+  id: 'run-at-login',
+  label: '开机自启注册项',
+  key: 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
+  names: ['CopilotHan', 'copilot-zh', 'CopilotZh', 'Copilot 汉化助手'],
+  describe() {
+    const items = [];
+    for (const n of this.names) {
+      const v = queryValue('HKCU', this.key, n);
+      if (v) items.push({ hive: 'HKCU', value: n + ' = ' + v });
+    }
+    return items;
+  },
+  clean() {
+    const cleaned = [];
+    for (const n of this.names) {
+      if (queryValue('HKCU', this.key, n)) {
+        deleteValue(this.key, n);
+        cleaned.push(`Run 键 → 删除 ${n}`);
+      }
+    }
+    return cleaned;
+  },
+  present() { return this.describe().length > 0; },
+};
+
+/**
  * 收集全部痕迹（跨平台在此分支）。
  * @param {object} opts { userDataDir, tempDirs, extraDirs }
  */
@@ -143,6 +172,7 @@ function collectTraces(opts = {}) {
   const traces = [];
   if (process.platform === 'win32') {
     traces.push(debugPolicy);
+    traces.push(runAtLogin);
 
     // 所有可能由 Electron / electron-updater 创建的目录
     const appData = process.env.APPDATA || '';

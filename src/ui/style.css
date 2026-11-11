@@ -211,3 +211,81 @@ body {
 .audit-label { font-size: 12.5px; color: var(--text); margin-bottom: 4px; }
 .audit-detail { font-size: 11.5px; color: var(--text-dim); line-height: 1.75; }
 .muted { color: var(--text-dimmer); }
+
+/* ---------- 常驻监控状态条 ---------- */
+.watchbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 20px; font-size: 12.5px;
+  background: var(--bg-elev2); border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.watchbar .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-dimmer); flex-shrink: 0;
+}
+.watchbar .dot.on { background: var(--success); box-shadow: 0 0 7px rgba(63,185,80,.7); }
+.watchbar .dot.wait { background: var(--warning); }
+.watchbar .dot.err { background: var(--danger); }
+.watchbar .spacer { flex: 1; }
+
+/* ---------- 设置弹窗 ---------- */
+.modal-mask {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(1,4,9,.78);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  width: 620px; max-width: calc(100vw - 60px);
+  max-height: calc(100vh - 80px);
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 12px; display: flex; flex-direction: column;
+  box-shadow: 0 18px 48px rgba(0,0,0,.55);
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { font-size: 15px; font-weight: 600; }
+.modal-close {
+  background: transparent; border: none; color: var(--text-dim);
+  font-size: 15px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.modal-close:hover { background: var(--bg-elev2); color: var(--text); }
+
+.modal-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+.modal-body::-webkit-scrollbar { width: 9px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+
+.setting-group { margin-bottom: 22px; }
+.setting-group:last-child { margin-bottom: 4px; }
+.setting-group-title {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .4px;
+  color: var(--text-dimmer); text-transform: uppercase;
+  margin-bottom: 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.setting-item {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 10px 0; cursor: default;
+}
+label.setting-item { cursor: pointer; }
+.setting-item input[type="checkbox"] {
+  width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0;
+  accent-color: var(--accent); cursor: pointer;
+}
+.setting-text { flex: 1; }
+.setting-name { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+.setting-desc { font-size: 11.5px; color: var(--text-dimmer); line-height: 1.6; }
+.setting-select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 6px 9px; font-size: 12px; font-family: inherit;
+  cursor: pointer; flex-shrink: 0;
+}
+.setting-select:disabled { opacity: .45; cursor: not-allowed; }
+
+.modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 13px 20px; border-top: 1px solid var(--border);
+}
+.modal-hint { font-size: 11.5px; color: var(--success); flex: 1; }

@@ -56,7 +56,14 @@
     ${EndIf}
   ${EndIf}
 
-  ; ---------- 3. 删除快捷方式（双重保险） ----------
+  ; ---------- 3. 删除开机自启项 ----------
+  ; 设置里的「开机自动启动」写入 HKCU Run，卸载必须清除
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "CopilotHan"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "copilot-zh"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "CopilotZh"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Copilot 汉化助手"
+
+  ; ---------- 4. 删除快捷方式（双重保险） ----------
   ; 当前名称
   Delete "$DESKTOP\Copilot 汉化助手.lnk"
   Delete "$SMPROGRAMS\Copilot 汉化助手.lnk"

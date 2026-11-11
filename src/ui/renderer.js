@@ -10,6 +10,8 @@ const state = {
   selectedEngine: null,
   pack: null,            // { meta, counts, dict }
   busy: false,
+  settings: null,        // 当前设置
+  watcher: null,         // 监控状态
 };
 
 // ---------------------------------------------------------------------------
@@ -54,7 +56,6 @@ function canApply() {
 async function init() {
   state.env = await window.api.env();
   $('badge-version').textContent = 'v' + state.env.appVersion;
-  $('badge-elev').textContent = state.env.platform === 'win32' ? 'Windows' : state.env.platform;
   $('status-dir').textContent = state.env.packsDir || '';
 
   const engineHint = $('engine-hint');
@@ -63,8 +64,181 @@ async function init() {
   }
 
   await Promise.all([locateTarget(), loadEngines(), loadPack()]);
+  await loadSettings();
   renderApplyState();
 }
+
+// ---------------------------------------------------------------------------
+// 常驻监控状态
+// ---------------------------------------------------------------------------
+
+function renderWatcher(st) {
+  state.watcher = st;
+  const dot = $('watch-dot');
+  const text = $('watch-text');
+  const badge = $('badge-watcher');
+  const btnInject = $('btn-inject-now');
+  const btnLaunch = $('btn-launch-copilot');
+  if (!st) return;
+
+  dot.className = 'dot';
+
+  if (!st.enabled) {
+    text.textContent = '常驻监控已关闭（可在设置中开启）';
+    badge.className = 'badge';
+    badge.textContent = '监控关闭';
+    btnInject.hidden = true;
+    btnLaunch.hidden = !st.copilotRunning ? false : true;
+    return;
+  }
+
+  if (!st.copilotRunning) {
+    dot.classList.add('on');
+    text.textContent = '常驻监控运行中 · 等待 GitHub Copilot 启动';
+    badge.className = 'badge ok';
+    badge.textContent = '监控中';
+    btnInject.hidden = true;
+    btnLaunch.hidden = false;
+    return;
+  }
+
+  if (st.injected) {
+    dot.classList.add('on');
+    const t = st.lastInjectAt ? new Date(st.lastInjectAt).toLocaleTimeString() : '';
+    text.textContent = `已汉化（PID ${st.copilotPid}）${t ? ' · ' + t : ''}`;
+    badge.className = 'badge ok';
+    badge.textContent = '汉化生效';
+  } else {
+    dot.classList.add('wait');
+    text.textContent = st.lastError
+      ? '等待注入：' + st.lastError
+      : '检测到 Copilot 运行中，正在注入…';
+    badge.className = 'badge warn';
+    badge.textContent = '注入中';
+  }
+  btnInject.hidden = false;
+  btnLaunch.hidden = true;
+}
+
+$('btn-inject-now').addEventListener('click', async () => {
+  setStatus('正在注入…');
+  const r = await window.api.injectNow();
+  if (r.ok) setStatus('已注入');
+  else showResult('err', '注入失败：' + (r.reason || '未知原因'));
+});
+
+$('btn-launch-copilot').addEventListener('click', async () => {
+  const r = await window.api.launchCopilot();
+  if (!r.ok) showResult('err', '启动 Copilot 失败：' + (r.reason || '未知原因'));
+  else setStatus('已启动 GitHub Copilot，稍候将自动汉化');
+});
+
+// ---------------------------------------------------------------------------
+// 设置
+// ---------------------------------------------------------------------------
+
+async function loadSettings() {
+  const r = await window.api.getSettings();
+  state.settings = r.data;
+
+  $('set-launch-after-apply').checked = !!r.data.launchCopilotAfterApply;
+  $('set-auto-inject').checked = !!r.data.autoInjectOnStart;
+  $('set-interval').value = String(r.data.watchIntervalMs);
+  $('set-run-at-login').checked = !!r.data.runAtLogin;
+  $('set-minimize-tray').checked = !!r.data.minimizeToTray;
+  $('settings-datadir').textContent = state.env.userDir || '';
+
+  // 开机自启在非 Windows 下不可用
+  if (!r.autostartSupported) {
+    $('set-run-at-login').disabled = true;
+    $('autostart-hint').textContent = '当前平台不支持';
+  }
+
+  const intervalSel = $('set-interval');
+  intervalSel.disabled = !r.data.autoInjectOnStart;
+
+  if (r.watcher) renderWatcher(r.watcher);
+}
+
+function flashSaved(text) {
+  const el = $('settings-saved-hint');
+  el.textContent = text || '已保存';
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(() => { el.textContent = ''; }, 1800);
+}
+
+async function patchSettings(patch) {
+  const r = await window.api.setSettings(patch);
+  if (!r.ok) {
+    showResult('err', r.reason || '保存设置失败');
+    await loadSettings();
+    return;
+  }
+  state.settings = r.data;
+  flashSaved();
+  // 间隔变化后需要刷新监控显示
+  const st = await window.api.watcherStatus();
+  renderWatcher(st);
+}
+
+function openSettings() {
+  $('settings-modal').hidden = false;
+  loadSettings();
+}
+function closeSettings() {
+  $('settings-modal').hidden = true;
+}
+
+$('btn-settings').addEventListener('click', openSettings);
+$('btn-settings-close').addEventListener('click', closeSettings);
+$('btn-settings-done').addEventListener('click', closeSettings);
+$('settings-modal').addEventListener('click', (e) => {
+  if (e.target === $('settings-modal')) closeSettings();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('settings-modal').hidden) closeSettings();
+});
+
+$('set-launch-after-apply').addEventListener('change', (e) => {
+  patchSettings({ launchCopilotAfterApply: e.target.checked });
+});
+$('set-auto-inject').addEventListener('change', (e) => {
+  $('set-interval').disabled = !e.target.checked;
+  patchSettings({ autoInjectOnStart: e.target.checked });
+});
+$('set-interval').addEventListener('change', (e) => {
+  patchSettings({ watchIntervalMs: Number(e.target.value) });
+});
+$('set-run-at-login').addEventListener('change', async (e) => {
+  const want = e.target.checked;
+  await patchSettings({ runAtLogin: want });
+});
+$('set-minimize-tray').addEventListener('change', (e) => {
+  patchSettings({ minimizeToTray: e.target.checked });
+});
+$('btn-open-data-2').addEventListener('click', () => window.api.openDataFolder());
+$('btn-reset-settings').addEventListener('click', async () => {
+  const r = await window.api.resetSettings();
+  if (r.ok) { flashSaved('已恢复默认'); await loadSettings(); }
+});
+
+// 监控状态实时推送
+window.api.onWatcherStatus((st) => renderWatcher(st));
+window.api.onWatcherInjected((info) => {
+  setStatus(`已自动汉化 Copilot（${info.replaced} 处）`);
+});
+window.api.onWatcherError((e) => {
+  setStatus('监控提示：' + e.message);
+});
+
+// 首次使用：策略刚写入，需要重启 Copilot 才生效
+window.api.onWatcherPolicyWritten((info) => {
+  showResult('info',
+    info.reason +
+    '\n\n请关闭 GitHub Copilot 后重新打开，之后就会自动汉化，无需再手动操作。');
+  setStatus('需要重启 GitHub Copilot 一次');
+});
+const btnRestart = null;
 
 // ---------------------------------------------------------------------------
 // 目标应用
@@ -259,10 +433,22 @@ async function doApply() {
   if (r.ok) {
     setProgress(100, '完成');
     const stats = r.stats || {};
-    showResult('ok',
+    let msg =
       `汉化已应用。替换 ${stats.replaced || 0} 处文案` +
-      (stats.port ? `（调试端口 ${stats.port}）` : '') +
-      '。\n请切换到 GitHub Copilot 窗口查看效果；若界面无变化，请重启 Copilot 后再次执行。');
+      (stats.port ? `（调试端口 ${stats.port}）` : '') + '。';
+
+    if (r.launched) {
+      if (r.launched.ok && r.launched.skipped) {
+        msg += '\nGitHub Copilot 已在运行，请切换到它的窗口查看效果。';
+      } else if (r.launched.ok) {
+        msg += '\n已同步启动 GitHub Copilot，请稍候查看中文界面。';
+      } else {
+        msg += '\n自动启动 Copilot 失败：' + (r.launched.reason || '未知原因');
+      }
+    } else {
+      msg += '\n请切换到 GitHub Copilot 窗口查看效果；若界面无变化，请重启 Copilot 后再次执行。';
+    }
+    showResult('ok', msg);
     await refreshStatus();
   } else {
     hideProgress();
