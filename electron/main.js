@@ -13,6 +13,7 @@ const cleanup = require('../src/core/cleanup');
 const { Settings } = require('../src/core/settings');
 const { Watcher } = require('../src/core/watcher');
 const { applyOneClick } = require('../src/core/applyFlow');
+const { scheduleDeleteAfterExit } = require('../src/core/delayedDelete');
 const autostart = require('../src/core/autostart');
 const { createEngines, supportedPlatforms } = require('../src/core/platform/engine');
 const { registerWin32 } = require('../src/core/platform/win32');
@@ -482,11 +483,16 @@ ipcMain.handle('engine:apply', async (evt, { engineId, target, dict }) => {
 // ---------------------------------------------------------------------------
 
 ipcMain.handle('sys:check', async () => {
+  // 全部异步读取，避免同步子进程调用阻塞主进程（曾导致 IPC 超时）
+  const [elevated, policy] = await Promise.all([
+    cdpWin.isElevatedAsync(),
+    cdpWin.readPolicyAsync('github.exe'),
+  ]);
   return {
-    elevated: cdpWin.isElevated(),
+    elevated,
     platform: process.platform,
     port: cdpWin.DEFAULT_PORT,
-    policy: cdpWin.readPolicy('github.exe'),
+    policy,
   };
 });
 
@@ -512,8 +518,38 @@ ipcMain.handle('sys:relaunchAsAdmin', async () => {
 ipcMain.handle('engine:revert', async (_evt, { engineId, target }) => {
   const engine = createEngines().find(e => e.id === engineId);
   if (!engine) return { ok: false, reason: '未知引擎: ' + engineId };
-  try { return await engine.revert(target); }
-  catch (e) { return { ok: false, reason: e.message }; }
+  try {
+    const r = await engine.revert(target);
+
+    // 按设置决定是否关闭 Copilot：
+    // 还原只移除了策略，已注入的翻译仍在页面内存中，
+    // 必须重启 Copilot 才会真正回到英文。
+    let closedCopilot = null;
+    if (r.ok && settings && settings.get('closeCopilotOnRevert')) {
+      try {
+        const pids = await require('../src/core/watcher').findCopilotPids();
+        if (pids.length) {
+          const { execFile } = require('child_process');
+          await new Promise((resolve) => {
+            execFile('taskkill', ['/IM', 'github.exe', '/T', '/F'],
+              { timeout: 10000, windowsHide: true }, () => resolve());
+          });
+          closedCopilot = { ok: true, closed: true };
+        } else {
+          closedCopilot = { ok: true, closed: false, reason: 'Copilot 未运行' };
+        }
+      } catch (e) {
+        closedCopilot = { ok: false, reason: e.message };
+      }
+    }
+
+    // 同步监控器状态，避免界面仍显示「已汉化」
+    if (watcher) watcher.markReverted();
+
+    return { ...r, closedCopilot };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -598,16 +634,59 @@ ipcMain.handle('cleanup:audit', async () => {
 });
 
 ipcMain.handle('cleanup:cleanAll', async () => {
-  // 先撤销引擎侧的汉化（移除调试端口策略等）
+  // 第 1 步：撤销引擎侧的汉化（移除调试端口策略等）
   const results = [];
   for (const e of createEngines()) {
     try { results.push({ engine: e.id, result: await e.revert({ exePath: '' }) }); }
     catch (err) { results.push({ engine: e.id, error: err.message }); }
   }
-  // 再清全部痕迹（含用户数据目录）
+
+  // 第 2 步：清理所有可在当前进程内删除的痕迹
+  // 注意：userData 目录（%APPDATA%\copilot-zh）被本进程占用，
+  // 内部删除必然 EBUSY，会被标记为 deferred 交由退出后处理。
   const r = cleanup.cleanAll(traceOptions());
-  return { ok: r.ok, cleaned: r.cleaned, errors: r.errors, engines: results };
+
+  // 第 3 步：为被占用的目录安排「退出后删除」
+  let deferred = null;
+  if (r.deferred && r.deferred.length) {
+    deferred = scheduleDeleteAfterExit({
+      dirs: r.deferred,
+      waitMs: 1500,
+      maxWaitSec: 30,
+      logFile: path.join(app.getPath('temp'), 'copilot-zh-cleanup.log'),
+    });
+  }
+
+  return {
+    ok: r.ok,
+    cleaned: r.cleaned,
+    deferred: r.deferred || [],
+    deferredScheduled: deferred && deferred.ok,
+    deferredReason: deferred && deferred.reason,
+    errors: r.errors,
+    engines: results,
+    // 告知界面：需要重启/退出才能完成最后一步
+    needRestart: !!(r.deferred && r.deferred.length && deferred && deferred.ok),
+  };
 });
+
+/** 关闭前执行延迟删除（供退出流程与其他入口复用） */
+function scheduleCleanupOnExit() {
+  const opts = traceOptions();
+  const traces = cleanup.collectTraces(opts);
+  const toDelete = [];
+  for (const t of traces) {
+    // 只处理目录类痕迹，且必须存在
+    if (t.dirPath && fs.existsSync(t.dirPath)) toDelete.push(t.dirPath);
+  }
+  if (!toDelete.length) return null;
+  return scheduleDeleteAfterExit({
+    dirs: toDelete,
+    waitMs: 1500,
+    maxWaitSec: 30,
+    logFile: path.join(app.getPath('temp'), 'copilot-zh-cleanup.log'),
+  });
+}
 
 ipcMain.handle('cleanup:openDataFolder', async () => {
   shell.openPath(USER_DIR);
@@ -624,4 +703,12 @@ ipcMain.handle('shell:openExternal', async (_e, url) => {
 ipcMain.handle('app:relaunch', async () => {
   app.relaunch();
   app.exit(0);
+});
+
+ipcMain.handle('app:quit', async () => {
+  isQuitting = true;
+  // 退出前安排数据目录的延迟删除（清理流程会用到）
+  try { scheduleCleanupOnExit(); } catch (e) { /* 忽略 */ }
+  setTimeout(() => app.quit(), 120);
+  return { ok: true };
 });

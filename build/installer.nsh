@@ -7,6 +7,41 @@
 ; 注意：产品显示名是「Copilot 汉化助手」，但数据目录刻意固定为 copilot-zh，
 ; 以保持升级兼容。改名时务必同步检查 electron/main.js 的 app.setPath('userData')。
 
+; ---------------------------------------------------------------------------
+; 卸载前：强制结束所有相关进程
+; 为什么必须在最前面做：
+;   1. 程序运行时 exe 被锁定，删除会失败
+;   2. 用户数据目录（%APPDATA%\copilot-zh）被 Electron 的多进程占用，
+;      DIPS / Cache / Local Storage 等文件句柄未释放 → EBUSY
+;   3. 程序可能最小化在托盘，用户误以为已退出
+; 这里不询问、直接终止，最多等 15 秒确保进程与句柄都释放。
+; ---------------------------------------------------------------------------
+!macro customUnInit
+  ; 先杀掉 Copilot 侧的相关进程不算本工具职责，只处理自己
+  nsExec::Exec 'taskkill /IM "CopilotHan.exe" /T /F'
+  Pop $1
+
+  ; 轮询等待进程消失（每次 1 秒，最多 15 次）
+  StrCpy $0 0
+  ${Do}
+    IntOp $0 $0 + 1
+    Sleep 1000
+
+    nsExec::Exec 'cmd /c tasklist /FI "IMAGENAME eq CopilotHan.exe" /NH | find /I "CopilotHan.exe"'
+    Pop $1
+    ; $1 == 0 表示还存在，继续等；非 0 表示已退出
+    ${If} $1 != 0
+      ${ExitDo}
+    ${EndIf}
+    ${If} $0 >= 15
+      ${ExitDo}
+    ${EndIf}
+  ${Loop}
+
+  ; 额外等待系统回收句柄
+  Sleep 1500
+!macroend
+
 !macro customUnInstall
   ; ---------- 1. 删除用户数据目录 ----------
   ; Electron userData（electron/main.js 中固定为 copilot-zh）

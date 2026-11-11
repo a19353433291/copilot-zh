@@ -316,6 +316,15 @@ class Watcher extends EventEmitter {
     this.emit('status', this.status());
   }
 
+  /** 已还原英文时调用，清空「已汉化」状态，避免界面继续显示已汉化 */
+  markReverted() {
+    this.injectedPid = null;
+    this.attempts = 0;
+    this.lastError = null;
+    this.lastInjectAt = null;
+    this.emit('status', this.status());
+  }
+
   status() {
     return {
       running: this.running,

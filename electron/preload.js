@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('api', {
   // 通用
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
 
   // 残留审计与清理
   cleanupAudit: () => ipcRenderer.invoke('cleanup:audit'),

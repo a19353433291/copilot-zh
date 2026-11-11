@@ -467,6 +467,7 @@ async function loadSettings() {
 
   $('set-launch-after-apply').checked = !!r.data.launchCopilotAfterApply;
   $('set-auto-restart').checked = r.data.autoRestartCopilot !== false;
+  $('set-close-on-revert').checked = r.data.closeCopilotOnRevert !== false;
   $('set-auto-inject').checked = !!r.data.autoInjectOnStart;
   $('set-run-at-login').checked = !!r.data.runAtLogin;
   $('set-minimize-tray').checked = !!r.data.minimizeToTray;
@@ -503,6 +504,9 @@ $('set-launch-after-apply').addEventListener('change', (e) =>
 
 $('set-auto-restart').addEventListener('change', (e) =>
   patchSettings({ autoRestartCopilot: e.target.checked }));
+
+$('set-close-on-revert').addEventListener('change', (e) =>
+  patchSettings({ closeCopilotOnRevert: e.target.checked }));
 
 $('set-auto-inject').addEventListener('change', (e) => {
   if (intervalSelect) intervalSelect.setEnabled(e.target.checked);
@@ -586,8 +590,26 @@ async function doRevert() {
   const target = { exePath: state.target.exePath, version: state.target.version };
   const r = await window.api.revert(state.selectedEngine, target);
   setBusy(false, r.ok ? '已还原' : '还原失败');
-  if (r.ok) showResult('info', '已还原英文界面。' + (r.reason || ''));
-  else showResult('err', '还原失败：' + (r.reason || '未知原因'));
+
+  if (!r.ok) {
+    showResult('err', '还原失败：' + (r.reason || '未知原因'));
+    return;
+  }
+
+  let msg = '已还原英文界面。' + (r.reason || '');
+  if (r.closedCopilot) {
+    if (r.closedCopilot.closed) {
+      msg += '\n\n已按设置自动关闭 GitHub Copilot，重新打开后即为英文界面。';
+    } else if (r.closedCopilot.ok === false) {
+      msg += '\n\n自动关闭 Copilot 失败：' + r.closedCopilot.reason +
+        '\n请手动关闭并重新打开 GitHub Copilot。';
+    } else {
+      msg += '\n\nGitHub Copilot 未在运行，下次启动即为英文界面。';
+    }
+  } else {
+    msg += '\n\n提示：若 Copilot 正在运行，需重启它才会显示英文。';
+  }
+  showResult('info', msg);
 }
 
 $('btn-revert').addEventListener('click', doRevert);
@@ -653,21 +675,38 @@ $('btn-audit').addEventListener('click', refreshAudit);
 $('btn-open-data').addEventListener('click', () => window.api.openDataFolder());
 
 $('btn-cleanall').addEventListener('click', async () => {
-  const ok = confirm('确定要彻底清理所有残留吗？\n\n将删除：\n· WebView2 调试端口策略\n· 所有字典包与用户数据\n· 缓存与日志\n\n清理后需要重新导入字典包才能继续汉化。');
+  const ok = confirm('确定要彻底清理所有残留吗？\n\n将删除：\n· WebView2 调试端口策略\n· 所有字典包与用户数据\n· 缓存与日志\n\n清理后程序会自动退出以完成最后一步删除，需要重新导入字典包才能汉化。');
   if (!ok) return;
   setBusy(true, '正在清理…');
   const r = await window.api.cleanupAll();
   setBusy(false, r.ok ? '清理完成' : '部分清理失败');
+
   const lines = [];
   if (r.cleaned && r.cleaned.length) {
-    lines.push('已清理 ' + r.cleaned.length + ' 项');
-    r.cleaned.slice(0, 10).forEach(c => lines.push('  · ' + c));
+    lines.push('已立即清理 ' + r.cleaned.length + ' 项');
+    r.cleaned.slice(0, 8).forEach(c => lines.push('  · ' + c));
+  }
+  if (r.deferred && r.deferred.length) {
+    lines.push('');
+    lines.push('以下 ' + r.deferred.length + ' 项正被本程序占用，将在退出后自动删除：');
+    r.deferred.forEach(d => lines.push('  · ' + d));
   }
   if (r.errors && r.errors.length) {
-    lines.push('失败 ' + r.errors.length + ' 项');
+    lines.push('');
+    lines.push('失败 ' + r.errors.length + ' 项：');
     r.errors.forEach(e => lines.push('  · ' + e));
   }
-  showResult(r.ok ? 'ok' : 'err', lines.join('\n') || '未发现需要清理的内容。');
+
+  showResult(r.errors && r.errors.length ? 'err' : 'ok', lines.join('\n') || '未发现需要清理的内容。');
+
+  if (r.needRestart) {
+    // 用户数据目录被占用，必须退出本程序才能删除
+    const quit = confirm('需要退出本程序才能完成最后的数据目录删除。\n\n现在退出吗？退出后剩余文件会自动清除。');
+    if (quit) { window.api.quitApp(); return; }
+    lines.push('');
+    lines.push('提示：关闭本程序后，剩余文件会自动删除。');
+  }
+
   await refreshAudit();
   await loadPack();
 });

@@ -24,6 +24,14 @@ const DEFAULTS = {
   autoRestartCopilot: true,
 
   /**
+   * 还原英文时是否自动关闭 GitHub Copilot。
+   * 默认开启：还原只移除调试端口策略，已注入的翻译仍在页面内存里，
+   * 必须重启 Copilot 才会真正显示英文。自动关闭后由用户或设置重新启动，
+   * 避免出现「已还原但还是中文」的错觉。
+   */
+  closeCopilotOnRevert: true,
+
+  /**
    * 常驻监控：Copilot 启动时自动注入翻译。
    * 这是「形态 2」的核心开关。
    */

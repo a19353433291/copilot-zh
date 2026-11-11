@@ -31,6 +31,57 @@ function isElevated() {
   }
 }
 
+/**
+ * 异步版本的权限检查（带缓存）。
+ * isElevated 内部同步执行 net session，约 1-2 秒，
+ * 在 IPC 中调用会阻塞主进程，因此提供异步版本。
+ */
+let _elevatedCache = null;
+let _elevatedAt = 0;
+const ELEVATED_TTL = 60000;
+
+function isElevatedAsync() {
+  if (_elevatedCache !== null && Date.now() - _elevatedAt < ELEVATED_TTL) {
+    return Promise.resolve(_elevatedCache);
+  }
+  return new Promise((resolve) => {
+    const { execFile } = require('child_process');
+    execFile('net', ['session'], { timeout: 8000, windowsHide: true }, (err) => {
+      _elevatedCache = !err;
+      _elevatedAt = Date.now();
+      resolve(_elevatedCache);
+    });
+  });
+}
+
+/**
+ * 异步读取调试端口策略（带短缓存）。
+ */
+let _policyCache = null;
+let _policyAt = 0;
+const POLICY_TTL = 3000;
+
+function readPolicyAsync(exeName) {
+  if (_policyCache !== null && Date.now() - _policyAt < POLICY_TTL) {
+    return Promise.resolve(_policyCache);
+  }
+  return new Promise((resolve) => {
+    const { execFile } = require('child_process');
+    execFile('reg', ['query', POLICY_KEY, '/v', exeName],
+      { encoding: 'utf8', timeout: 8000, windowsHide: true },
+      (err, stdout) => {
+        let v = null;
+        if (!err && stdout) {
+          const m = String(stdout).match(/REG_SZ\s+(.*)/);
+          v = m ? m[1].trim() : null;
+        }
+        _policyCache = v;
+        _policyAt = Date.now();
+        resolve(v);
+      });
+  });
+}
+
 function readPolicy(exeName) {
   try {
     const out = execFileSync('reg', ['query', POLICY_KEY, '/v', exeName],
@@ -751,6 +802,7 @@ async function isPortReady(port = DEFAULT_PORT) {
 }
 
 module.exports = {
-  RuntimeInjectEngine, DEFAULT_PORT, isElevated, readPolicy, writePolicy, removePolicy,
+  RuntimeInjectEngine, DEFAULT_PORT, isElevated, isElevatedAsync,
+  readPolicy, readPolicyAsync, writePolicy, removePolicy,
   queryTranslatorAlive, isPortReady, evaluateInPage,
 };

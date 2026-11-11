@@ -125,9 +125,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(300);
 
   console.log('\n=== 其他控件 ===');
-  check('开关数量', await ev(`document.querySelectorAll('.switch input').length`), 5);
+  check('开关数量', await ev(`document.querySelectorAll('.switch input').length`), 6);
   check('原生 select 已移除', await ev(`document.querySelectorAll('select').length`), 0);
-  check('管理员提示显示', await ev(`!document.getElementById('admin-hint').hidden`), true);
+  // 管理员提示：未提权才显示，与 sysCheck 结果一致即为正确
+  const elevated = await ev(`window.api.sysCheck().then(x => x.elevated)`);
+  const hintShown = await ev(`!document.getElementById('admin-hint').hidden`);
+  check('管理员提示与提权状态一致', hintShown, !elevated);
 
   // 截设置页
   const shot = await ws.send('Page.captureScreenshot', { format: 'png' });

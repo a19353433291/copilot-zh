@@ -114,21 +114,49 @@ const debugPolicy = {
 
 /**
  * 目录痕迹。
+ *
+ * @param {object} opts
+ *   - locked: true 表示该目录被当前进程占用（如 Electron 自己的 userData），
+ *     不能在本进程内删除，必须交给退出后的延迟删除脚本。
  */
-function dirTrace(id, label, dirPath) {
+function dirTrace(id, label, dirPath, opts = {}) {
   return {
     id,
     label,
     dirPath,
+    locked: !!opts.locked,
     describe() {
       if (!fs.existsSync(dirPath)) return [];
-      const files = fs.readdirSync(dirPath, { recursive: true, withFileTypes: true })
-        .filter(e => e.isFile()).length;
-      return [{ path: dirPath, files }];
+      let files = 0;
+      try {
+        files = fs.readdirSync(dirPath, { recursive: true, withFileTypes: true })
+          .filter(e => e.isFile()).length;
+      } catch (e) {
+        // 目录可能因占用而部分不可读，仍视为存在
+      }
+      return [{
+        path: dirPath,
+        files,
+        locked: this.locked,
+      }];
     },
     clean() {
       if (!fs.existsSync(dirPath)) return [];
-      fs.rmSync(dirPath, { recursive: true, force: true });
+
+      // 被占用的目录无法在本进程删除（EBUSY），标记为待延迟删除
+      if (this.locked) {
+        return [{ deferred: true, path: dirPath }];
+      }
+
+      try {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      } catch (e) {
+        // 即使非预期目录也可能因占用失败，同样转为延迟删除
+        return [{ deferred: true, path: dirPath, error: e.code || e.message }];
+      }
+      if (fs.existsSync(dirPath)) {
+        return [{ deferred: true, path: dirPath }];
+      }
       return [dirPath];
     },
     present() { return fs.existsSync(dirPath); },
@@ -166,7 +194,9 @@ const runAtLogin = {
 
 /**
  * 收集全部痕迹（跨平台在此分支）。
- * @param {object} opts { userDataDir, tempDirs, extraDirs }
+ * @param {object} opts
+ *   - userDataDir: 当前进程的 userData 目录（会被标记为 locked）
+ *   - tempDirs:    [[label, path]]
  */
 function collectTraces(opts = {}) {
   const traces = [];
@@ -179,8 +209,15 @@ function collectTraces(opts = {}) {
     const localAppData = process.env.LOCALAPPDATA || '';
     // 主目录名固定为 copilot-zh；其余为历史命名与改名兼容
     const names = ['copilot-zh', 'CopilotZh', 'Copilot 汉化助手'];
+    const currentUserData = opts.userDataDir ? path.resolve(opts.userDataDir).toLowerCase() : '';
+
     if (appData) {
-      for (const n of names) traces.push(dirTrace('appdata-' + n, '用户数据：' + n, path.join(appData, n)));
+      for (const n of names) {
+        const p = path.join(appData, n);
+        // 当前进程正在使用的 userData 目录必须延迟删除
+        const locked = currentUserData && path.resolve(p).toLowerCase() === currentUserData;
+        traces.push(dirTrace('appdata-' + n, '用户数据：' + n, p, { locked }));
+      }
     }
     if (localAppData) {
       for (const n of names) {
@@ -190,7 +227,7 @@ function collectTraces(opts = {}) {
     }
   }
   if (opts.userDataDir) {
-    traces.push(dirTrace('user-data', '用户数据（字典包、日志、备份）', opts.userDataDir));
+    traces.push(dirTrace('user-data', '用户数据（字典包、日志、备份）', opts.userDataDir, { locked: true }));
   }
   if (opts.tempDirs) {
     for (const [label, p] of opts.tempDirs) {
@@ -212,26 +249,59 @@ function audit(opts) {
     try { items = t.describe(); } catch (e) { items = []; }
     if (items.length) found.push({ id: t.id, label: t.label, items });
   }
-  return { traces: found, total: found.length };
+  // 去重：同一个物理路径可能被多个 trace 覆盖
+  const seen = new Set();
+  const dedup = [];
+  for (const f of found) {
+    const key = f.items.map(i => (i.path || i.value || '').toLowerCase()).join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    dedup.push(f);
+  }
+  return { traces: dedup, total: dedup.length };
 }
 
 /**
  * 清理：删除所有残留。
- * @returns {{ok: boolean, cleaned: string[], errors: string[]}}
+ *
+ * 返回结构：
+ *   - cleaned:  已实际删除的项（字符串描述）
+ *   - deferred: 无法立即删除、已安排退出后删除的目录
+ *   - errors:   真正失败的项
+ *
+ * @returns {{ok: boolean, cleaned: string[], deferred: string[], errors: string[]}}
  */
 function cleanAll(opts) {
   const traces = collectTraces(opts);
   const cleaned = [];
   const errors = [];
+  const deferred = [];
+
+  // 同一路径可能被多个 trace 覆盖，记录已处理的路径避免重复
+  const handled = new Set();
+
   for (const t of traces) {
+    let r;
     try {
-      const r = t.clean();
-      if (r && r.length) cleaned.push(...r.map(x => `[${t.label}] ${x}`));
+      r = t.clean();
     } catch (e) {
       errors.push(`[${t.label}] ${e.message}`);
+      continue;
+    }
+    if (!r || !r.length) continue;
+    for (const item of r) {
+      if (item && typeof item === 'object' && item.deferred) {
+        const key = path.resolve(item.path).toLowerCase();
+        if (handled.has(key)) continue;
+        handled.add(key);
+        deferred.push(item.path);
+      } else {
+        cleaned.push(`[${t.label}] ${item}`);
+      }
     }
   }
-  return { ok: errors.length === 0, cleaned, errors };
+
+  return { ok: errors.length === 0, cleaned, deferred, errors };
 }
 
 module.exports = {
