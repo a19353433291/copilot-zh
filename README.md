@@ -1,198 +1,187 @@
 # Copilot 汉化助手
 
-> 仓库标识：`copilot-zh` ｜ 可执行文件：`CopilotHan.exe`
+**简体中文** ｜ [English](README.en.md)
 
-Windows 桌面应用，为 **GitHub Copilot 桌面版**（Tauri + WebView2）提供简体中文界面。
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
+[![Electron](https://img.shields.io/badge/Electron-38-47848F?logo=electron)](https://www.electronjs.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.7.1-success)](https://github.com/)
 
-> 非官方社区工具，与 GitHub 公司无关。
+> 为 **GitHub Copilot 桌面版** 提供简体中文界面的 Windows 工具。
+> 不修改应用本体，数字签名保持完好，一次配置后随 Copilot 启动自动汉化。
 
-## 命名说明
+---
 
-| 用途 | 名称 |
-|---|---|
-| 界面显示名 / 安装包 / 快捷方式 | Copilot 汉化助手 |
-| 仓库名 / npm 包名 | copilot-zh |
-| 可执行文件名 | CopilotHan.exe |
-| 用户数据目录 | `%APPDATA%\copilot-zh`（**固定不变**，保证升级不丢字典） |
+## 简介
 
-> 数据目录刻意与显示名解耦：产品改名不影响数据位置，避免老用户升级后字典「消失」。
+GitHub Copilot 桌面版（Tauri + WebView2 架构）目前没有内置中文界面，也没有语言包或插件机制——界面文案全部硬编码在应用内。
 
-## 已实现功能
+**Copilot 汉化助手** 通过 WebView2 调试端口连接 Copilot 的渲染页面，把翻译实时注入到 DOM 中。整个过程：
 
-- ✅ **可安装的桌面应用**：NSIS 安装包，含开始菜单快捷方式、卸载程序
-- ✅ **模式 A：运行时注入**：WebView2 调试端口 + CDP 注入，**不改应用本体，签名保持完好**
-- ✅ **常驻监控（形态 2）**：Copilot 一启动就自动汉化，无需手动操作
-- ✅ **系统托盘**：关闭窗口后监控继续运行
-- ✅ **设置页**：汉化后自动启动 Copilot、监控开关、间隔、开机自启、托盘行为
-- ✅ **字典包与软件本体分离**：字典包独立签名、独立版本、可单独更新
-- ✅ **ed25519 签名校验**：字典包防篡改，镜像站无法投毒
-- ✅ **平台可插拔架构**：Windows 已实现，macOS/Linux 预留扩展点
-- ✅ **字典 439 条 + 43 条正则**：覆盖主界面 97.5%
-- ✅ **彻底还原**：移除调试策略并清理空注册表键，三层干净
-- ✅ **卸载零残留**：程序、数据、策略、自启项、快捷方式、更新缓存全部清除（已验证 10 项）
+- **不改动 `github.exe`**，Copilot 的数字签名保持有效
+- **Copilot 升级后依然可用**，无需重新打补丁
+- **随启动自动生效**，配置一次后无需再手动操作
 
-## 使用方式（形态 2）
+汉化内容以**独立签名的字典包**形式分发，与软件本体分离，可单独更新和回滚。
 
-日常使用只需两步，之后无需再管：
+<p align="center">
+  <img src="docs/images/screenshot-home.png" width="820" alt="主界面">
+</p>
 
-1. 打开「Copilot 汉化助手」（建议开启设置里的**开机自动启动**）
-2. 正常使用 GitHub Copilot —— 它会自动变成中文界面
+---
 
-```dsh-ui
-{"title":"自动汉化的三种触发场景","gap":12,"items":[{"type":"table","columns":["场景","表现","实测"],"rows":[["Copilot 首次启动","1-2 秒内自动汉化","✅ 第 2 秒生效"],["Copilot 重启","1-2 秒内自动汉化","✅ 第 1 秒生效"],["页面刷新/重载","1 秒内自动重新注入","✅ 第 1 秒恢复"]],"details":["","",""]}]}
-```
+## 特性
 
-> **首次使用提示**：若之前从未执行过汉化，监控器会自动开启调试端口并提示「请重启 Copilot 一次」。重启后即自动生效，之后不再需要任何操作。
+| 特性 | 说明 |
+| :--- | :--- |
+| 🚀 **一键汉化** | 自动写入调试策略、启动或重启 Copilot、等待界面就绪、注入并验证 |
+| 🔄 **常驻自动汉化** | Copilot 启动或页面刷新时自动注入，无需手动操作 |
+| 🧩 **字典与软件分离** | 字典包独立版本、独立签名，可单独更新而不重装软件 |
+| 🔐 **签名校验** | 字典包使用 ed25519 签名，篡改或镜像投毒会被拒绝安装 |
+| 🎯 **不误翻用户内容** | AI 回复、代码块、用户名、会话标题不会被翻译 |
+| 🕐 **日期本地化** | `November 11, 2026, at 10:21 PM` → `2026年11月11日 22:21` |
+| ♻️ **彻底还原** | 移除调试策略并清理空注册表键，不残留任何本工具创建的键 |
+| 🧹 **卸载零残留** | 程序、数据、策略、自启项、快捷方式、更新缓存全部清除 |
+| 🖥️ **托盘常驻** | 关闭窗口后监控继续运行 |
+| 🔌 **平台可插拔** | 引擎接口抽象，新增平台只需实现 `src/core/platform/<平台>` |
 
-## 设置项
+---
 
-| 设置 | 默认 | 说明 |
-|---|---|---|
-| 汉化后同步启动 GitHub Copilot | **开启** | 执行汉化成功后，若 Copilot 未运行则自动启动 |
-| 常驻监控：Copilot 启动时自动汉化 | **开启** | 后台监测并自动注入 |
-| 监控检查间隔 | 1500ms | 越小越灵敏，CPU 开销略高 |
-| 开机自动启动汉化助手 | 关闭 | 写入 HKCU Run，卸载时自动清除 |
-| 关闭窗口时最小化到托盘 | **开启** | 关闭后监控会停止，建议保持开启 |
+## 系统要求
 
-设置保存在 `%APPDATA%\copilot-zh\settings.json`，卸载时一并删除。
+- **Windows 10 / 11**（x64）
+- [GitHub Copilot 桌面版](https://github.com/features/copilot) 已安装（测试版本 v1.2.0）
+- WebView2 Runtime（Windows 11 已内置）
+- **管理员权限**：写入 WebView2 调试策略需要 HKLM 权限
 
-## 零残留保证
+---
 
-本工具对「还原」与「卸载」都做到了彻底清除，已实测验证。
+## 安装
 
-### 卸载时会删除的内容
+### 方式一：安装包（推荐）
 
-| 项目 | 位置 |
-|---|---|
-| 程序文件 | `%LOCALAPPDATA%\Programs\Copilot 汉化助手` |
-| 用户数据（字典包、日志、备份） | `%APPDATA%\copilot-zh` |
-| 更新缓存 | `%LOCALAPPDATA%\copilot-zh-updater` |
-| WebView2 调试策略值 | `HKLM\...\WebView2\AdditionalBrowserArguments\github.exe` |
-| 空的策略键（含父键） | `HKLM\...\WebView2\AdditionalBrowserArguments` |
-| 开始菜单快捷方式 | `%APPDATA%\Microsoft\Windows\Start Menu\Programs` |
-| 桌面快捷方式 | `%USERPROFILE%\Desktop` |
-| 卸载注册项 | `HKCU\...\CurrentVersion\Uninstall` |
-| 开机自启项 | `HKCU\...\CurrentVersion\Run\CopilotHan` |
+1. 下载最新的 `CopilotHan-Setup-<版本号>.exe`
+2. 双击运行，按向导完成安装
+3. 程序会请求管理员权限（UAC 提示点是）
 
-### 「还原英文」会删除的内容
+> **关于 UAC 提示**：汉化需要写 HKLM 注册表策略开启 WebView2 调试端口，因此程序清单声明了 `requireAdministrator`，每次启动会弹 UAC 确认，这是正常现象。
+>
+> **关于 SmartScreen**：安装包未购买代码签名证书，首次运行可能提示"未知发布者"，点击"更多信息 → 仍要运行"即可。
 
-1. 删除 `github.exe` 策略值
-2. 若 `AdditionalBrowserArguments` 键已空 → 删除该键
-3. 若 `WebView2` 父键也已空 → 删除该键
+### 方式二：从源码运行
 
-三步完成后，注册表中不留下任何由本工具创建的键，且重复调用幂等不报错。
-
-### 软件内的「彻底清理」
-
-界面底部提供「残留检查与彻底清理」：
-- 自动审计所有已知痕迹并列出
-- 一键清除（含引擎侧的还原 + 全部目录）
-
-## 快速开始
-
-### 开发模式运行
-
-```bat
+```bash
+git clone <仓库地址>
+cd copilot-zh
 npm install
 npm start
 ```
 
-> 注意：若环境中存在 `ELECTRON_RUN_AS_NODE` 变量，需先清除，否则应用会被降级为纯 Node 而无法创建窗口。
+> **注意**：若环境中存在 `ELECTRON_RUN_AS_NODE` 环境变量，需先清除，否则 Electron 会被降级为纯 Node 进程而无法创建窗口。
 
-### 构建安装包
+---
 
-```bat
-npm run build
-```
+## 使用
 
-产物：`dist/CopilotHan-Setup-<版本号>.exe`（当前为 `0.3.0`）
+### 日常使用（推荐）
 
-### 生成字典包
+配置一次后无需再管：
 
-```bat
-node scripts/make-sample-pack.js
-```
+1. 以管理员身份启动「Copilot 汉化助手」
+2. 在 **设置** 中开启「开机自动启动」
+3. 正常使用 GitHub Copilot —— 它会自动变成中文界面
 
-产物：`dist-packs/zh-CN-0.1.0/`（含 `manifest.json` 与载荷）
+关闭主窗口会最小化到系统托盘，常驻监控继续工作。
 
-> 该脚本固定输出 `0.1.0` 的示例包，仅用于验证链路。正式出包请用 `node scripts/build-pack.js`，
-> 它会读取 `src/core/dict/translations.json` 并按其版本号输出到 `dist-packs/`。
+### 首次配置
 
-## 使用流程
+1. 启动程序，程序会自动检测 Copilot 的安装路径与版本
+2. 确认字典包已加载（安装包已内置）
+3. 点击 **一键汉化**
 
-1. 启动「Copilot 汉化助手」（模式 A 需要**管理员权限**）
-2. 自动检测 GitHub Copilot 路径与版本
-3. 选择「模式 A：运行时注入」
-4. 导入字典包（或使用已安装的）
-5. 点击「执行汉化」
-6. 切换到 GitHub Copilot 窗口，界面即为中文
-
-## 目录结构
+程序会自动完成以下步骤：
 
 ```
-copilot-zh/
-├── electron/
-│   ├── main.js              主进程：窗口、IPC、业务编排
-│   └── preload.js           预加载：安全暴露 API
-├── src/
-│   ├── core/
-│   │   ├── locator.js       定位 GitHub Copilot（注册表 + 常见路径）
-│   │   ├── settings.js      应用设置读写
-│   │   ├── watcher.js       常驻监控：自动检测并重新注入
-│   │   ├── autostart.js     开机自启动（注册表）
-│   │   ├── cleanup.js       残留检查与彻底清理
-│   │   ├── platform/
-│   │   │   ├── engine.js    引擎接口契约 + 平台注册表
-│   │   │   └── win32/
-│   │   │       ├── index.js         Windows 平台注册
-│   │   │       └── runtimeInject.js 模式A：CDP 运行时注入
-│   │   └── dict/
-│   │       ├── pack.js      字典包：加载、验签、兼容性、打包
-│   │       └── translations.json  翻译词库（按界面主题分组）
-│   └── ui/                  界面（HTML/CSS/JS）
-├── scripts/
-│   ├── check-env.js         环境自检（postinstall）
-│   ├── make-icon.js         生成应用图标（纯 Node）
-│   ├── make-sample-pack.js  生成示例字典包（验证链路）
-│   ├── build-pack.js        从 translations.json 构建正式字典包
-│   ├── build-dict.js        整理采集结果为待翻译清单
-│   ├── collect-live.js      运行时采集真实界面文案（CDP）
-│   ├── extract-strings.js   从 github.exe 提取文案候选
-│   ├── measure-final.js     覆盖率测量
-│   ├── verify-ui.js         验证汉化效果
-│   └── verify-revert.js     验证「还原英文」是否彻底
-└── build/                   图标与签名密钥
+写入调试策略 → 检测端口 → 必要时重启 Copilot → 启动 → 等待界面就绪 → 注入 → 验证
 ```
 
-## 数据存储
+如果 Copilot 正在运行但调试端口尚未开启，程序会自动重启它——你不需要手动关闭 Copilot。
 
-| 位置 | 内容 | 卸载时 |
-|---|---|---|
-| `%LOCALAPPDATA%\Programs\Copilot 汉化助手` | 软件本体 | 删除 |
-| `%APPDATA%\copilot-zh\packs` | 字典包 | 保留 |
-| `%APPDATA%\copilot-zh\logs` | 日志 | 保留 |
-| `%APPDATA%\copilot-zh\backups` | 模式B的 exe 备份 | 保留 |
+### 还原英文
 
-软件与数据物理分离，因此更新字典不影响软件，更新软件不影响字典。
+点击 **还原英文**，程序会：
 
-## 字典包格式
+1. 删除 WebView2 调试端口策略值
+2. 清理因此产生的空注册表键（含父键）
+3. 按设置自动关闭 Copilot（默认开启），确保重新打开时显示英文
+
+---
+
+## 设置项
+
+| 设置 | 默认 | 说明 |
+| :--- | :---: | :--- |
+| 汉化后同步启动 GitHub Copilot | 开启 | 汉化成功后若 Copilot 未运行则自动启动 |
+| 自动重启 Copilot 以启用调试端口 | 开启 | Copilot 在运行但端口未开时自动重启它 |
+| 还原英文时自动关闭 Copilot | 开启 | 还原后需重启 Copilot 才显示英文，自动关闭更省事 |
+| 常驻监控自动汉化 | 开启 | Copilot 启动或页面刷新时自动注入 |
+| 检查间隔 | 1500 ms | 越小越灵敏，CPU 开销略高 |
+| 开机自动启动 | 关闭 | 写入 HKCU Run 键，卸载时自动清除 |
+| 关闭窗口时最小化到托盘 | 开启 | 关闭后常驻监控会停止，建议保持开启 |
+
+设置保存在 `%APPDATA%\copilot-zh\settings.json`，采用原子写入，文件损坏会自动备份并重置。
+
+---
+
+## 工作原理
+
+GitHub Copilot 桌面版使用 **Tauri + WebView2** 构建，界面是运行在 WebView2 中的 React 应用。
 
 ```
-zh-CN-0.1.0/
-├── manifest.json        含 ed25519 签名 + 载荷哈希
-└── zh-CN-0.1.0.json     实际翻译内容
+┌─────────────────────────┐         ┌──────────────────────────┐
+│  Copilot 汉化助手        │         │  GitHub Copilot          │
+│                         │         │                          │
+│  ① 写 WebView2 策略     │────────▶│  ② WebView2 开启调试端口   │
+│  ③ 通过 CDP 连接页面    │◀───────▶│  http://tauri.localhost  │
+│  ④ 注入翻译脚本         │         │  ⑤ React 渲染时应用翻译    │
+│  ⑥ MutationObserver     │         │                          │
+│     跟踪重渲染           │         │                          │
+└─────────────────────────┘         └──────────────────────────┘
 ```
 
-`manifest.json` 结构：
+**关键技术点**（均为实测结论）：
+
+- Copilot v1.2.0 会忽略环境变量 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`，**必须写注册表策略**：
+  ```
+  HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments
+    github.exe = --remote-debugging-port=9222
+  ```
+- HKCU（用户级）策略**无效**，必须 HKLM，因此需要管理员权限
+- 策略写入后需**重启 Copilot** 才生效
+- 应用刚启动时会先渲染加载骨架，必须等真实界面出现再注入，否则翻译会被骨架覆盖
+
+---
+
+## 字典包
+
+### 结构
+
+```
+zh-CN-1.5.0/
+├── manifest.json         含 ed25519 签名与载荷哈希
+└── zh-CN-1.5.0.json      翻译内容
+```
+
+`manifest.json`：
 
 ```json
 {
   "manifest": {
-    "packVersion": "0.1.0",
+    "packVersion": "1.5.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 48, "patterns": 6, "attrs": 6 },
-    "payload": { "name": "zh-CN-0.1.0.json", "size": 2633, "sha256": "..." }
+    "entryCounts": { "texts": 512, "patterns": 46, "attrs": 28, "attrPatterns": 26 },
+    "payload": { "name": "zh-CN-1.5.0.json", "size": 27808, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -206,50 +195,206 @@ zh-CN-0.1.0/
   "schema": 1,
   "locale": "zh-CN",
   "entries": {
-    "texts":       { "Sidebar": "侧边栏" },
-    "patterns":    [["^(\\d+)% used$", "$1% 已使用", ""]],
-    "attrs":       { "Resize sidebar": "调整侧边栏大小" },
-    "attrPatterns":[["^Search (\\d+) skills…$", "搜索 $1 个技能…", ""]]
+    "texts":        { "Sidebar": "侧边栏" },
+    "patterns":     [["^(\\d+)% used$", "$1% 已使用", ""]],
+    "attrs":        { "Resize sidebar": "调整侧边栏大小" },
+    "attrPatterns": [["^Search (\\d+) skills…$", "搜索 $1 个技能…", ""]]
   }
 }
 ```
 
-## 模式 A 的工作原理与前提
+四种匹配方式：
 
-**原理**：应用使用 WebView2 渲染界面。开启 WebView2 的调试端口后，本工具通过 CDP 连接页面，注入翻译脚本，由 `MutationObserver` 持续跟踪 React 重渲染。
+| 类型 | 用途 |
+| :--- | :--- |
+| `texts` | 精确匹配可见文本与 `aria-label` |
+| `patterns` | 正则匹配动态文案（带数字、时间的句子） |
+| `attrs` | 精确匹配 `placeholder` / `title` / `aria-label` / `alt` |
+| `attrPatterns` | 正则匹配属性值 |
 
-**关键前提（已实测）**：Copilot v1.2.0 会忽略环境变量 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`，也必须写注册表策略：
+### 当前覆盖
+
+- **512** 条精确文本
+- **46** 条文本正则
+- **28** 条属性映射
+- **26** 条属性正则
+
+主界面与设置页实测覆盖率 **97.2%**（73 条可翻译文案中 69 条已中文化）。
+
+### 构建字典包
+
+```bash
+node scripts/build-pack.js --version 1.5.0
+```
+
+该脚本读取 `src/core/dict/translations.json`（按主题分组的词库），展开为运行时结构并签名输出到 `dist-packs/`。
+
+首次运行时若无签名密钥，会自动生成 `build/pack-signing-key.pem`。**请妥善保管此文件**，后续所有字典包应使用同一密钥签名，否则用户端的信任关系需要重新建立。
+
+---
+
+## 开发
+
+### 项目结构
 
 ```
-HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments
-  github.exe = --remote-debugging-port=9222
+copilot-zh/
+├── electron/
+│   ├── main.js                主进程：窗口、托盘、IPC、业务编排
+│   └── preload.js             预加载：白名单方式暴露 API
+├── src/
+│   ├── core/
+│   │   ├── applyFlow.js       一键汉化完整闭环编排
+│   │   ├── locator.js         定位 Copilot（注册表 + 常见路径，带缓存）
+│   │   ├── settings.js        设置持久化（原子写入 + 损坏自愈）
+│   │   ├── watcher.js         常驻监控（轮询 + 自动注入 + 状态追踪）
+│   │   ├── autostart.js       开机自启（HKCU Run 键）
+│   │   ├── cleanup.js         残留审计与清理（痕迹统一登记处）
+│   │   ├── delayedDelete.js   退出后延迟删除（解决文件占用）
+│   │   ├── platform/
+│   │   │   ├── engine.js      引擎接口契约 + 平台注册表
+│   │   │   └── win32/
+│   │   │       ├── index.js           Windows 平台注册
+│   │   │       └── runtimeInject.js   模式 A：CDP 运行时注入
+│   │   └── dict/
+│   │       ├── pack.js        字典包加载、验签、兼容性检查、打包
+│   │       └── translations.json  翻译词库（按主题分组）
+│   └── ui/                    界面（原生 HTML/CSS/JS，无框架）
+├── build/
+│   ├── icon.ico               应用图标
+│   └── installer.nsh          NSIS 自定义卸载脚本
+└── scripts/                   构建与测试工具
 ```
 
-- 需要**管理员权限**
-- HKCU（用户级）无效，必须 HKLM
-- 策略写入后需**重启 Copilot** 才生效
+### 常用命令
 
-**「还原英文」** 会删除该策略，重启 Copilot 后界面恢复英文。
+```bash
+npm start                  # 开发模式运行
+npm run build              # 构建 NSIS 安装包（输出到 dist/）
+node scripts/build-pack.js # 构建字典包
+node scripts/test-ui.js    # UI 回归测试
+node scripts/test-apply.js # 一键汉化端到端测试
+```
 
-## 安全提示
+### 测试脚本
 
-模式 A 需要保持 `--remote-debugging-port=9222` 开启，该端口**仅监听 127.0.0.1**，但同机上的其他程序理论上可连接并操控 Copilot 的页面。不使用汉化时，建议点击「还原英文」移除该策略。
+| 脚本 | 用途 |
+| :--- | :--- |
+| `test-apply.js` | 一键汉化端到端测试（冷启动 / 已运行两种场景） |
+| `test-revert.js` | 还原英文彻底性与自动关闭 Copilot |
+| `test-paged-ui.js` | 分页导航、自定义下拉框、开关控件 |
+| `test-delayed-delete.js` | 延迟删除机制（模拟文件占用） |
+| `verify-settings.js` | 遍历各界面统计汉化覆盖率 |
+| `verify-revert.js` | 还原后注册表残留检查 |
+
+### 扩展新平台
+
+引擎接口定义在 `src/core/platform/engine.js`，实现以下方法即可接入新平台：
+
+```javascript
+class MyEngine extends I18nEngine {
+  get id() { return 'my-engine'; }
+  get displayName() { return '我的引擎'; }
+  capabilities() { /* 声明是否改本体、破签名、需常驻等 */ }
+  async probe(target) { /* 探测兼容性 */ }
+  async apply(target, dict, opts) { /* 执行汉化 */ }
+  async revert(target) { /* 还原 */ }
+  async status(target) { /* 查询状态 */ }
+}
+```
+
+然后在 `src/core/platform/<平台>/index.js` 中注册，核心代码无需改动。
+
+---
+
+## 数据存储
+
+| 位置 | 内容 |
+| :--- | :--- |
+| `%LOCALAPPDATA%\Programs\CopilotHan` | 程序文件 |
+| `%APPDATA%\copilot-zh\packs` | 字典包 |
+| `%APPDATA%\copilot-zh\settings.json` | 用户设置 |
+| `%APPDATA%\copilot-zh\logs` | 日志 |
+| `%APPDATA%\copilot-zh\backups` | exe 备份（模式 B 预留） |
+
+软件与数据物理分离：更新字典不影响软件，更新软件不丢失字典。
+
+> 数据目录名固定为 `copilot-zh`，与产品显示名解耦。这样产品改名不会导致老用户的数据"消失"。
+
+---
+
+## 卸载与清理
+
+### 卸载
+
+通过「设置 → 应用 → 已安装的应用」或开始菜单中的卸载程序卸载。卸载器会：
+
+1. 强制结束所有相关进程（即使程序正在运行或隐藏在托盘）
+2. 删除程序文件
+3. 删除用户数据、更新缓存
+4. 清理 WebView2 调试策略（含空键）
+5. 清理开机自启项、快捷方式、卸载注册项
+
+### 程序内彻底清理
+
+**清理** 页面提供残留审计与一键清理：
+
+- 自动扫描并列出所有已知痕迹
+- 被程序自身占用的目录会安排退出后删除（避免 `EBUSY`）
+- 清理完成后可选择立即退出以完成最后一步
+
+---
+
+## 安全说明
+
+- 调试端口 `9222` **仅监听 `127.0.0.1`**，不接受外部连接
+- 但同机上的其他程序理论上可连接该端口并操控 Copilot 页面
+- 不使用汉化时，建议点击 **还原英文** 移除调试策略
+- 本工具不收集、不传输任何用户数据，不联网（除检查字典更新外）
+
+---
 
 ## 已知限制
 
-- 只在 Windows 上验证过（Copilot v1.2.0）
-- 字典覆盖有限，未收录的文案会保持英文
-- 图标、图片内的文字无法翻译
+- 仅在 Windows 10/11 上验证（Copilot v1.2.0）
+- 字典覆盖有限，未收录的文案保持英文
+- 图标与图片内的文字无法翻译
 - AI 回复、代码块、用户名、会话标题不会被翻译（有意为之）
-- 安装包未做代码签名，首次运行 Windows SmartScreen 会提示，需点「更多信息 → 仍要运行」
+- 安装包未做代码签名，首次运行会有 SmartScreen 提示
+- 需要管理员权限，每次启动会弹 UAC
 
-## 后续计划
+---
 
-- [ ] 模式 B：二进制补丁（一次生效、无需常驻）
-- [ ] 字典包在线更新（GitHub Releases / 镜像源）
-- [ ] macOS / Linux 支持（`src/core/platform/darwin`、`linux`）
-- [ ] 扩展字典覆盖至核心界面 2000+ 条
+## 贡献
 
-## 许可
+欢迎提交 Issue 与 Pull Request。
 
-MIT
+**补充翻译**是最容易参与的贡献方式：
+
+1. 编辑 `src/core/dict/translations.json`，按现有分组添加 `"英文": "中文"`
+2. 运行 `node scripts/build-pack.js --version <新版本号>` 生成字典包
+3. 提交 PR 时说明新增条目数量与覆盖的界面
+
+发现未翻译的文案时，请在 Issue 中提供**英文原文**（而非截图），这样更便于精确匹配。
+
+---
+
+## 免责声明
+
+本项目是**非官方社区工具**，与 GitHub 公司无关。
+
+使用本工具可能违反 GitHub Copilot 服务条款，请自行评估风险。因使用本工具产生的任何问题，作者不承担责任。
+
+请遵守所在地区的法律法规与软件许可协议。
+
+---
+
+## 许可证
+
+[MIT](LICENSE)
+
+---
+
+<p align="center">
+  <sub>如果这个工具对你有帮助，欢迎 Star ⭐</sub>
+</p>
