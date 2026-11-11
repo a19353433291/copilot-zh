@@ -105,7 +105,7 @@ npm start
 npm run build
 ```
 
-产物：`dist/CopilotHan-Setup-0.2.0.exe`
+产物：`dist/CopilotHan-Setup-<版本号>.exe`（当前为 `0.3.0`）
 
 ### 生成字典包
 
@@ -114,6 +114,9 @@ node scripts/make-sample-pack.js
 ```
 
 产物：`dist-packs/zh-CN-0.1.0/`（含 `manifest.json` 与载荷）
+
+> 该脚本固定输出 `0.1.0` 的示例包，仅用于验证链路。正式出包请用 `node scripts/build-pack.js`，
+> 它会读取 `src/core/dict/translations.json` 并按其版本号输出到 `dist-packs/`。
 
 ## 使用流程
 
@@ -134,19 +137,30 @@ copilot-zh/
 ├── src/
 │   ├── core/
 │   │   ├── locator.js       定位 GitHub Copilot（注册表 + 常见路径）
+│   │   ├── settings.js      应用设置读写
+│   │   ├── watcher.js       常驻监控：自动检测并重新注入
+│   │   ├── autostart.js     开机自启动（注册表）
+│   │   ├── cleanup.js       残留检查与彻底清理
 │   │   ├── platform/
 │   │   │   ├── engine.js    引擎接口契约 + 平台注册表
 │   │   │   └── win32/
 │   │   │       ├── index.js         Windows 平台注册
 │   │   │       └── runtimeInject.js 模式A：CDP 运行时注入
 │   │   └── dict/
-│   │       └── pack.js      字典包：加载、验签、兼容性、打包
+│   │       ├── pack.js      字典包：加载、验签、兼容性、打包
+│   │       └── translations.json  翻译词库（按界面主题分组）
 │   └── ui/                  界面（HTML/CSS/JS）
 ├── scripts/
 │   ├── check-env.js         环境自检（postinstall）
 │   ├── make-icon.js         生成应用图标（纯 Node）
-│   ├── make-sample-pack.js  生成示例字典包
-│   └── verify-ui.js         验证汉化效果
+│   ├── make-sample-pack.js  生成示例字典包（验证链路）
+│   ├── build-pack.js        从 translations.json 构建正式字典包
+│   ├── build-dict.js        整理采集结果为待翻译清单
+│   ├── collect-live.js      运行时采集真实界面文案（CDP）
+│   ├── extract-strings.js   从 github.exe 提取文案候选
+│   ├── measure-final.js     覆盖率测量
+│   ├── verify-ui.js         验证汉化效果
+│   └── verify-revert.js     验证「还原英文」是否彻底
 └── build/                   图标与签名密钥
 ```
 

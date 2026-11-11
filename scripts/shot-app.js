@@ -1,11 +1,15 @@
-// 测试：页面刷新后，监控器是否会自动重新注入
+// 通过 CDP 直接截取 Electron 应用窗口（最可靠，不受窗口层级影响）
+const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const net = require('net');
 
+const PORT = 9333;
+const OUT = process.argv[2] || 'C:\\Users\\a1935\\Desktop\\copilot-zh\\_scratch\\app-shot.png';
+
 function httpGet(p) {
   return new Promise((res, rej) => {
-    http.get({ host: '127.0.0.1', port: 9222, path: p }, r => {
+    http.get({ host: '127.0.0.1', port: PORT, path: p }, r => {
       let d = ''; r.on('data', c => d += c); r.on('end', () => res(d));
     }).on('error', rej);
   });
@@ -62,67 +66,40 @@ class WS {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const CHECK = `(() => {
-  const s = new Set();
-  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  let n;
-  while ((n = w.nextNode())) { const t = n.nodeValue.trim(); if (t) s.add(t); }
-  const a = [...s];
-  return JSON.stringify({
-    translator: typeof window.__copilotZh !== 'undefined',
-    cjk: a.filter(x => /[\u4e00-\u9fff]/.test(x)).length,
-    total: a.length,
-  });
-})()`;
-
-async function check(ws) {
-  const r = await ws.send('Runtime.evaluate', { expression: CHECK, returnByValue: true });
-  return JSON.parse(r.result.value);
-}
 
 (async () => {
   const list = JSON.parse(await httpGet('/json/list'));
   const page = list.find(t => t.type === 'page');
+  if (!page) { console.error('未找到页面'); process.exit(1); }
+  console.log('目标:', page.title, page.url);
+
   const ws = new WS(page.webSocketDebuggerUrl);
   await ws.connect();
 
-  console.log('=== 刷新前 ===');
-  const before = await check(ws);
-  console.log('  翻译器:', before.translator, '| 中文', before.cjk, '/', before.total);
+  // 关闭可能打开的弹窗
+  await ws.send('Runtime.evaluate', { expression: `document.getElementById('settings-modal').hidden = true; 'ok'`, returnByValue: true });
+  await sleep(400);
 
-  console.log('\n=== 强制刷新页面（模拟用户按 F5 / 应用重载）===');
-  await ws.send('Page.enable', {});
-  await ws.send('Page.reload', {});
+  const shot = await ws.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  const buf = Buffer.from(shot.data, 'base64');
+  fs.writeFileSync(OUT, buf);
+  console.log('已保存:', OUT, (buf.length / 1024).toFixed(0) + ' KB');
+
+  // 同时导出当前界面结构，便于检查
+  const txt = await ws.send('Runtime.evaluate', {
+    expression: `(() => {
+      const el = document.querySelector('.main');
+      return JSON.stringify({
+        sections: [...document.querySelectorAll('.section-title')].map(x => x.textContent.trim()),
+        status: document.getElementById('watch-text').textContent,
+        sub: document.getElementById('watch-sub').textContent,
+        pill: document.getElementById('badge-watcher').textContent,
+        target: document.getElementById('target-info').textContent.trim(),
+        pack: document.getElementById('pack-info').textContent.trim(),
+        applyDisabled: document.getElementById('btn-apply').disabled,
+      });
+    })()`, returnByValue: true,
+  });
+  console.log('界面状态:', txt.result.value);
   ws.close();
-
-  // 刷新后立刻检查（此时应该丢失翻译）
-  await sleep(3000);
-  const list2 = JSON.parse(await httpGet('/json/list'));
-  const page2 = list2.find(t => t.type === 'page');
-  const ws2 = new WS(page2.webSocketDebuggerUrl);
-  await ws2.connect();
-  const justAfter = await check(ws2);
-  console.log('  刷新后立即:', '翻译器:', justAfter.translator, '| 中文', justAfter.cjk, '/', justAfter.total);
-
-  // 等监控器自动补注入（间隔 1500ms，留足余量）
-  console.log('\n=== 等待监控器自动重新注入（最多 20 秒）===');
-  let restored = null;
-  for (let i = 0; i < 20; i++) {
-    await sleep(1000);
-    const c = await check(ws2);
-    if (c.translator) {
-      restored = { after: i + 1, ...c };
-      break;
-    }
-    process.stdout.write('.');
-  }
-  console.log('');
-
-  if (restored) {
-    console.log(`✓ 监控器在 ${restored.after} 秒内自动恢复了翻译`);
-    console.log(`  翻译器: ${restored.translator} | 中文 ${restored.cjk}/${restored.total}`);
-  } else {
-    console.log('✗ 20 秒内未自动恢复');
-  }
-  ws2.close();
 })().catch(e => { console.error('失败:', e.message); process.exit(1); });

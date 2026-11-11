@@ -1,15 +1,13 @@
-// 打印注入的完整 CDP 响应，定位 undefined 原因
-const path = require('path');
+// UI 功能回归测试：验证弹窗开关、隐藏元素、开关控件
 const http = require('http');
 const crypto = require('crypto');
 const net = require('net');
 
-const root = path.resolve(__dirname, '..');
-const packLib = require(path.join(root, 'src/core/dict/pack'));
+const PORT = 9333;
 
 function httpGet(p) {
   return new Promise((res, rej) => {
-    http.get({ host: '127.0.0.1', port: 9222, path: p }, r => {
+    http.get({ host: '127.0.0.1', port: PORT, path: p }, r => {
       let d = ''; r.on('data', c => d += c); r.on('end', () => res(d));
     }).on('error', rej);
   });
@@ -60,68 +58,76 @@ class WS {
     else { h = Buffer.alloc(10); h[0] = 0x81; h[1] = 0x80 | 127; h.writeBigUInt64BE(BigInt(data.length), 2); }
     this.sock.write(Buffer.concat([h, mask, masked]));
     return new Promise((res, rej) => { this.pending.set(id, { resolve: res, reject: rej });
-      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); rej(new Error('timeout')); } }, 25000); });
+      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); rej(new Error('timeout')); } }, 15000); });
   }
   close() { try { this.sock.destroy(); } catch (e) {} }
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// 极简翻译器：只验证注入链路可行
-const SIMPLE = (dict) => `(() => {
-  const DICT = ${JSON.stringify(dict)};
-  const texts = DICT.entries.texts || {};
-  const SKIP = 'pre, code, script, style, textarea, [contenteditable="true"]';
-  let replaced = 0;
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  let n;
-  while ((n = walker.nextNode())) {
-    const raw = n.nodeValue;
-    if (!raw) continue;
-    const t = raw.trim();
-    if (!t || texts[t] === undefined) continue;
-    try { if (n.parentElement && n.parentElement.closest(SKIP)) continue; } catch (e) {}
-    if (raw !== texts[t]) {
-      const l = raw.match(/^\\s*/)[0];
-      const r = raw.match(/\\s*$/)[0];
-      n.nodeValue = l + texts[t] + r;
-      replaced++;
-    }
-  }
-  return { replaced: replaced, ok: true };
-})();`;
-
 (async () => {
-  const curPack = path.join(process.env.APPDATA, 'copilot-zh', 'packs', 'current');
-  const loaded = packLib.loadPack(curPack);
-  console.log('字典:', JSON.stringify(packLib.countEntries(loaded.dict)));
-
   const list = JSON.parse(await httpGet('/json/list'));
   const page = list.find(t => t.type === 'page');
   const ws = new WS(page.webSocketDebuggerUrl);
   await ws.connect();
 
-  const src = SIMPLE(loaded.dict);
-  console.log('脚本长度:', src.length);
+  const ev = async (expr) => {
+    const r = await ws.send('Runtime.evaluate', { expression: expr, returnByValue: true });
+    return r && r.result ? r.result.value : null;
+  };
 
-  const r = await ws.send('Runtime.evaluate', {
-    expression: src, returnByValue: true, awaitPromise: false,
-  });
-  console.log('完整响应:', JSON.stringify(r).slice(0, 900));
+  const results = [];
+  const check = (name, actual, expected) => {
+    const pass = actual === expected;
+    results.push({ name, pass, actual, expected });
+    console.log(`  ${pass ? '✓' : '✗'} ${name}  (实际=${JSON.stringify(actual)})`);
+  };
 
-  await sleep(600);
-  const chk = await ws.send('Runtime.evaluate', {
-    expression: `(() => {
-      const s = new Set();
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      let n;
-      while ((n = w.nextNode())) { const t = n.nodeValue.trim(); if (t) s.add(t); }
-      const arr = [...s];
-      return JSON.stringify({ total: arr.length, cjk: arr.filter(x => /[\\u4e00-\\u9fff]/.test(x)).length,
-        sample: arr.slice(0, 12) });
-    })()`,
-    returnByValue: true,
-  });
-  console.log('页面状态:', chk.result && chk.result.value);
+  console.log('=== UI 功能回归 ===');
+
+  // 隐藏状态
+  check('弹窗初始隐藏', await ev(`document.getElementById('settings-modal').hidden`), true);
+  check('进度条初始隐藏', await ev(`document.getElementById('progress-wrap').hidden`), true);
+  check('提示框初始隐藏', await ev(`document.getElementById('result').hidden`), true);
+
+  // 弹窗开关
+  await ev(`document.getElementById('btn-settings').click()`);
+  await sleep(350);
+  check('点击设置→弹窗显示', await ev(`!document.getElementById('settings-modal').hidden`), true);
+
+  await ev(`document.getElementById('btn-settings-done').click()`);
+  await sleep(350);
+  check('点击完成→弹窗隐藏', await ev(`document.getElementById('settings-modal').hidden`), true);
+
+  // 点击遮罩关闭
+  await ev(`document.getElementById('btn-settings').click()`);
+  await sleep(300);
+  await ev(`document.getElementById('settings-modal').click()`);
+  await sleep(300);
+  check('点击遮罩→弹窗隐藏', await ev(`document.getElementById('settings-modal').hidden`), true);
+
+  // 控件存在性
+  const switches = await ev(`document.querySelectorAll('.switch input').length`);
+  check('开关控件数量', switches, 4);
+
+  const selected = await ev(`document.querySelectorAll('.engine-item.selected').length`);
+  check('模式已默认选中', selected, 1);
+
+  const applyEnabled = await ev(`!document.getElementById('btn-apply').disabled`);
+  check('执行汉化按钮可用', applyEnabled, true);
+
+  // 设置值读取
+  const vals = await ev(`JSON.stringify({
+    launch: document.getElementById('set-launch-after-apply').checked,
+    auto: document.getElementById('set-auto-inject').checked,
+    interval: document.getElementById('set-interval').value,
+  })`);
+  console.log('  设置当前值:', vals);
+
+  const failed = results.filter(r => !r.pass);
+  console.log(`\n结果: ${results.length - failed.length}/${results.length} 通过`);
+  if (failed.length) { console.log('失败项:'); failed.forEach(f => console.log('  -', f.name)); }
+
   ws.close();
+  process.exit(failed.length ? 1 : 0);
 })().catch(e => { console.error('失败:', e.message); process.exit(1); });

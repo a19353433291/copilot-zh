@@ -18,12 +18,16 @@ const state = {
 // 工具
 // ---------------------------------------------------------------------------
 
-function setStatus(text) { $('status-text').textContent = text; }
+function setStatus(text) {
+  const el = $('status-text');
+  if (el) el.textContent = text;
+}
 
 function showResult(kind, text) {
   const el = $('result');
   el.hidden = false;
-  el.className = 'result ' + kind;
+  // 新样式使用 alert 前缀
+  el.className = 'alert ' + (kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'info');
   el.textContent = text;
 }
 function clearResult() { $('result').hidden = true; }
@@ -38,9 +42,11 @@ function hideProgress() { $('progress-wrap').hidden = true; $('progress-fill').s
 
 function setBusy(busy, text) {
   state.busy = busy;
-  for (const id of ['btn-apply', 'btn-revert', 'btn-locate', 'btn-choose', 'btn-import-pack', 'btn-check-update']) {
+  for (const id of ['btn-apply', 'btn-revert', 'btn-locate', 'btn-choose',
+                    'btn-import-pack', 'btn-check-update', 'btn-audit', 'btn-cleanall']) {
     const b = $(id);
-    if (b) b.disabled = busy || (id === 'btn-apply' && !canApply());
+    if (!b) continue;
+    b.disabled = busy || (id === 'btn-apply' && !canApply());
   }
   if (text) setStatus(text);
 }
@@ -75,51 +81,53 @@ async function init() {
 function renderWatcher(st) {
   state.watcher = st;
   const dot = $('watch-dot');
-  const text = $('watch-text');
-  const badge = $('badge-watcher');
+  const title = $('watch-text');
+  const sub = $('watch-sub');
+  const pill = $('badge-watcher');
   const btnInject = $('btn-inject-now');
   const btnLaunch = $('btn-launch-copilot');
   if (!st) return;
 
-  dot.className = 'dot';
+  dot.className = 'status-dot';
+  sub.textContent = '';
+  btnInject.hidden = true;
+  btnLaunch.hidden = true;
 
   if (!st.enabled) {
-    text.textContent = '常驻监控已关闭（可在设置中开启）';
-    badge.className = 'badge';
-    badge.textContent = '监控关闭';
-    btnInject.hidden = true;
-    btnLaunch.hidden = !st.copilotRunning ? false : true;
+    title.textContent = '常驻监控已关闭';
+    sub.textContent = '可在设置中开启「常驻监控自动汉化」';
+    pill.className = 'pill';
+    pill.textContent = '已关闭';
+    if (st.copilotRunning) btnLaunch.hidden = true;
     return;
   }
 
   if (!st.copilotRunning) {
-    dot.classList.add('on');
-    text.textContent = '常驻监控运行中 · 等待 GitHub Copilot 启动';
-    badge.className = 'badge ok';
-    badge.textContent = '监控中';
-    btnInject.hidden = true;
+    dot.classList.add('ok');
+    title.textContent = '监控运行中';
+    sub.textContent = '等待 GitHub Copilot 启动，启动后将自动汉化';
+    pill.className = 'pill ok';
+    pill.textContent = '运行中';
     btnLaunch.hidden = false;
     return;
   }
 
   if (st.injected) {
-    dot.classList.add('on');
-    const t = st.lastInjectAt ? new Date(st.lastInjectAt).toLocaleTimeString() : '';
-    text.textContent = `已汉化（PID ${st.copilotPid}）${t ? ' · ' + t : ''}`;
-    badge.className = 'badge ok';
-    badge.textContent = '汉化生效';
+    dot.classList.add('ok');
+    title.textContent = '界面已汉化';
+    const t = st.lastInjectAt ? new Date(st.lastInjectAt).toLocaleTimeString('zh-CN', { hour12: false }) : '';
+    sub.textContent = `Copilot 已在运行${t ? ' · 汉化于 ' + t : ''}`;
+    pill.className = 'pill ok';
+    pill.textContent = '已汉化';
   } else {
-    dot.classList.add('wait');
-    text.textContent = st.lastError
-      ? '等待注入：' + st.lastError
-      : '检测到 Copilot 运行中，正在注入…';
-    badge.className = 'badge warn';
-    badge.textContent = '注入中';
+    dot.classList.add(st.lastError ? 'err' : 'wait');
+    title.textContent = st.lastError ? '注入未成功' : '正在注入…';
+    sub.textContent = st.lastError || '检测到 Copilot 运行中，即将完成汉化';
+    pill.className = 'pill ' + (st.lastError ? 'err' : 'warn');
+    pill.textContent = st.lastError ? '需处理' : '注入中';
   }
   btnInject.hidden = false;
-  btnLaunch.hidden = true;
 }
-
 $('btn-inject-now').addEventListener('click', async () => {
   setStatus('正在注入…');
   const r = await window.api.injectNow();
@@ -246,11 +254,13 @@ const btnRestart = null;
 
 async function locateTarget() {
   const box = $('target-info');
+  box.className = 'row-value dim';
   box.textContent = '正在检测…';
   const r = await window.api.locateApp();
   if (!r.ok) {
     state.target = null;
-    box.innerHTML = '<span style="color:var(--warning)">未自动找到 GitHub Copilot。请点击下方「手动选择路径」。</span>';
+    box.className = 'row-value';
+    box.innerHTML = '<span class="warn-text">未自动找到，请手动选择</span>';
     setStatus('未找到目标应用');
     renderApplyState();
     return;
@@ -265,21 +275,21 @@ function renderTarget() {
   const t = state.target;
   const box = $('target-info');
   if (!t) {
-    box.className = 'target-empty';
+    box.className = 'row-value dim';
     box.textContent = '未选择目标应用';
     return;
   }
-  box.className = '';
-  const sigClass = t.signature === 'Valid' ? 'ok' : (t.signature === 'HashMismatch' ? 'err' : 'warn');
-  const sigLabel = t.signature === 'Valid' ? '✓ 签名有效'
-    : t.signature === 'HashMismatch' ? '✗ 签名已失效（文件被修改过）'
-    : t.signature || '未知';
-  box.innerHTML = `
-    <dl class="target-grid">
-      <dt>程序</dt><dd class="path">${escapeHtml(t.exePath)}</dd>
-      <dt>版本</dt><dd class="mono">${escapeHtml(t.version || '未知')}</dd>
-      <dt>签名</dt><dd><span class="badge ${sigClass}">${escapeHtml(sigLabel)}</span></dd>
-    </dl>`;
+  box.className = 'row-value';
+  const sigOk = t.signature === 'Valid';
+  const sigWarn = t.signature === 'HashMismatch';
+  const sigSpan = sigOk
+    ? '<span class="inline-ok">签名有效</span>'
+    : sigWarn
+      ? '<span class="inline-danger">签名已失效</span>'
+      : '<span class="inline-muted">签名未知</span>';
+  const name = t.exePath.split('\\').pop();
+  box.innerHTML = `${escapeHtml(name)} ${sigSpan} <span class="inline-muted">· v${escapeHtml(t.version || '?')}</span>`;
+  box.title = t.exePath;
 }
 
 function escapeHtml(s) {
@@ -294,7 +304,15 @@ function escapeHtml(s) {
 
 async function loadEngines() {
   state.engines = await window.api.listEngines();
+  // 默认选中第一个可用引擎，避免用户看到「执行汉化」灰着不知为何
+  if (!state.selectedEngine && state.engines.length) {
+    state.selectedEngine = state.engines[0].id;
+    if (state.selectedEngine === 'runtime-inject') {
+      $('engine-hint').textContent = '需要以管理员身份运行本工具才能开启调试端口。';
+    }
+  }
   renderEngines();
+  renderApplyState();
 }
 
 const ENGINE_DESC = {
@@ -323,7 +341,7 @@ const ENGINE_DESC = {
 function renderEngines() {
   const box = $('engine-list');
   if (!state.engines.length) {
-    box.innerHTML = '<div class="pack-empty">当前平台没有可用引擎。</div>';
+    box.innerHTML = '<div class="row-value dim">当前平台没有可用引擎。</div>';
     return;
   }
   box.innerHTML = state.engines.map(e => {
@@ -332,8 +350,9 @@ function renderEngines() {
       .map(x => `<span class="tag ${x.good ? 'good' : (x.bad ? 'bad' : '')}">${escapeHtml(x.t)}</span>`)
       .join('');
     const sel = state.selectedEngine === e.id ? ' selected' : '';
-    return `<div class="engine-item${sel}" data-engine="${escapeHtml(e.id)}">
-      <div class="radio"></div>
+    const checked = state.selectedEngine === e.id ? 'true' : 'false';
+    return `<div class="engine-item${sel}" data-engine="${escapeHtml(e.id)}" role="radio" aria-checked="${checked}" tabindex="0">
+      <div class="radio-mark"></div>
       <div class="engine-body">
         <div class="engine-title">${escapeHtml(e.displayName)}</div>
         <div class="engine-desc">${escapeHtml(meta.desc)}</div>
@@ -344,16 +363,16 @@ function renderEngines() {
 
   box.querySelectorAll('.engine-item').forEach(el => {
     el.addEventListener('click', () => selectEngine(el.dataset.engine));
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectEngine(el.dataset.engine); }
+    });
   });
 }
 
 function selectEngine(id) {
   state.selectedEngine = id;
-  const meta = ENGINE_DESC[id];
-  $('engine-hint').textContent = meta
-    ? meta.desc + (id === 'runtime-inject'
-        ? ' 注意：需要以管理员身份运行本工具。'
-        : '')
+  $('engine-hint').textContent = id === 'runtime-inject'
+    ? '需要以管理员身份运行本工具才能开启调试端口。'
     : '';
   renderEngines();
   renderApplyState();
@@ -365,10 +384,11 @@ function selectEngine(id) {
 
 async function loadPack() {
   const r = await window.api.currentPack();
+  const box = $('pack-info');
   if (!r.ok) {
     state.pack = null;
-    $('pack-info').className = 'pack-empty';
-    $('pack-info').textContent = r.reason || '尚未安装字典包';
+    box.className = 'row-value dim';
+    box.textContent = '尚未安装字典包';
     renderApplyState();
     return;
   }
@@ -380,21 +400,13 @@ async function loadPack() {
 function renderPack() {
   const p = state.pack;
   const box = $('pack-info');
-  box.className = '';
+  box.className = 'row-value';
   const m = p.meta || {};
   const c = p.counts || {};
-  const compat = m.appCompat || {};
-  const compatText = (compat.min || compat.max)
-    ? `>= ${compat.min || '不限'} 且 <= ${compat.max || '不限'}`
-    : '不限制';
-  box.innerHTML = `
-    <dl class="pack-grid">
-      <dt>版本</dt><dd class="mono">${escapeHtml(m.packVersion || '未知')}</dd>
-      <dt>语言</dt><dd>${escapeHtml(m.locale || 'zh-CN')}</dd>
-      <dt>条目</dt><dd>文本 ${c.texts || 0} · 正则 ${c.patterns || 0} · 属性 ${c.attrs || 0}</dd>
-      <dt>兼容版本</dt><dd>${escapeHtml(compatText)}</dd>
-      <dt>校验</dt><dd><span class="badge ok">✓ 签名与哈希校验通过</span></dd>
-    </dl>`;
+  box.innerHTML = `v${escapeHtml(m.packVersion || '?')} ` +
+    `<span class="inline-muted">· ${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则</span> ` +
+    `<span class="inline-ok">已校验</span>`;
+  renderApplyState();
 }
 
 // ---------------------------------------------------------------------------
@@ -472,21 +484,8 @@ async function doRevert() {
 }
 
 async function refreshStatus() {
-  if (!state.target || !state.selectedEngine) return;
-  const target = { exePath: state.target.exePath, version: state.target.version };
-  try {
-    const st = await window.api.status(state.selectedEngine, target);
-    if (st && st.info) {
-      const el = $('badge-elev');
-      if (st.state === 'applied') {
-        el.className = 'badge ok';
-        el.textContent = st.info.debugPortLive ? '汉化生效中' : '已配置（待重启生效）';
-      } else {
-        el.className = 'badge';
-        el.textContent = '未汉化';
-      }
-    }
-  } catch (e) { /* ignore */ }
+  // 状态展示统一由常驻监控（renderWatcher）负责，此处不再重复更新顶部状态
+  return;
 }
 
 // ---------------------------------------------------------------------------
@@ -538,31 +537,30 @@ $('btn-revert').addEventListener('click', doRevert);
 
 async function refreshAudit() {
   const box = $('audit-info');
-  box.className = 'audit-empty';
+  box.className = 'row-value audit-box';
   box.textContent = '正在检查…';
   const r = await window.api.cleanupAudit();
   if (!r.total) {
-    box.className = 'audit-clean';
-    box.innerHTML = '✓ 未发现任何残留，系统是干净的。';
+    box.className = 'row-value audit-box clean';
+    box.textContent = '未发现残留，系统干净。';
     $('btn-cleanall').disabled = true;
     return;
   }
   $('btn-cleanall').disabled = false;
-  box.className = '';
+  box.className = 'row-value audit-box';
   const rows = r.traces.map(t => {
     const details = t.items.map(i => {
-      if (i.path) return `<span class="path">${escapeHtml(i.path)}</span>${i.files !== undefined ? ` <span class="muted">(${i.files} 个文件)</span>` : ''}`;
-      if (i.hive) return `<span class="mono">${escapeHtml(i.hive)}</span> · <span class="mono">${escapeHtml(i.value)}</span>`;
+      if (i.path) return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}`;
+      if (i.hive) return `${escapeHtml(i.hive)} · ${escapeHtml(i.value)}`;
       return escapeHtml(JSON.stringify(i));
     }).join('<br>');
     return `<div class="audit-item">
-      <div class="audit-label">⚠ ${escapeHtml(t.label)}</div>
+      <div class="audit-label">${escapeHtml(t.label)}</div>
       <div class="audit-detail">${details}</div>
     </div>`;
   }).join('');
-  box.innerHTML = `<div class="audit-head">发现 ${r.total} 项残留：</div>${rows}`;
+  box.innerHTML = `<div class="audit-head">发现 ${r.total} 项残留</div>${rows}`;
 }
-
 $('btn-audit').addEventListener('click', refreshAudit);
 
 $('btn-open-data').addEventListener('click', () => window.api.openDataFolder());

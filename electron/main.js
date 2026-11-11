@@ -177,7 +177,7 @@ function createTray() {
 
 /** 启动 GitHub Copilot 主程序 */
 async function launchCopilot() {
-  const loc = locateApp();
+  const loc = await locateApp();
   if (!loc.ok) return { ok: false, reason: loc.reason };
 
   const { spawn } = require('child_process');
@@ -263,17 +263,19 @@ function initWatcher() {
   watcher.start();
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   ensureDirs();
   bootstrapBundledPack();
 
   settings = new Settings(USER_DIR);
 
-  // 同步开机自启状态（以注册表实际状态为准，防止设置与实际不一致）
-  const realAutoStart = autostart.isEnabled();
-  if (realAutoStart !== settings.get('runAtLogin')) {
-    settings.set({ runAtLogin: realAutoStart });
-  }
+  // 以注册表实际状态为准，防止设置与实际不一致（异步，不阻塞启动）
+  try {
+    const realAutoStart = await autostart.isEnabled();
+    if (realAutoStart !== settings.get('runAtLogin')) {
+      settings.set({ runAtLogin: realAutoStart });
+    }
+  } catch (e) { /* 忽略，不影响启动 */ }
 
   createWindow();
   createTray();
@@ -318,7 +320,8 @@ ipcMain.handle('settings:get', async () => {
     data: settings.getAll(),
     defaults: Settings.defaults,
     autostartSupported: autostart.isSupported(),
-    autostartReal: autostart.isEnabled(),
+    // 异步读取，避免阻塞主进程
+    autostartReal: await autostart.isEnabled(),
     watcher: watcher ? watcher.status() : null,
   };
 });
@@ -326,10 +329,10 @@ ipcMain.handle('settings:get', async () => {
 ipcMain.handle('settings:set', async (_e, patch) => {
   const r = settings.set(patch);
 
-  // 开机自启需同步注册表
+  // 开机自启需同步注册表（异步）
   if (r.changed.includes('runAtLogin')) {
     const want = settings.get('runAtLogin');
-    const a = autostart.setEnabled(want, process.execPath);
+    const a = await autostart.setEnabled(want, process.execPath);
     if (!a.ok) {
       // 回滚设置，保持与真实状态一致
       settings.set({ runAtLogin: !want });
@@ -342,7 +345,6 @@ ipcMain.handle('settings:set', async (_e, patch) => {
     if (settings.get('autoInjectOnStart')) {
       if (!watcher.running) watcher.start();
     }
-    // 关闭时不停线程，只在 tick 里跳过（便于再次开启）
   }
 
   return { ok: true, changed: r.changed, data: settings.getAll() };
@@ -350,7 +352,7 @@ ipcMain.handle('settings:set', async (_e, patch) => {
 
 ipcMain.handle('settings:reset', async () => {
   const d = settings.reset();
-  autostart.setEnabled(d.runAtLogin, process.execPath);
+  await autostart.setEnabled(d.runAtLogin, process.execPath);
   return { ok: true, data: d };
 });
 
@@ -369,9 +371,9 @@ ipcMain.handle('watcher:launchCopilot', async () => launchCopilot());
 // ---------------------------------------------------------------------------
 
 ipcMain.handle('app:locate', async () => {
-  const r = locateApp();
+  const r = await locateApp();
   if (r.ok) {
-    r.signature = readSignature(r.exePath);
+    r.signature = await readSignature(r.exePath);
   }
   return r;
 });
@@ -384,19 +386,23 @@ ipcMain.handle('app:choose', async () => {
   });
   if (res.canceled || !res.filePaths.length) return { ok: false, reason: 'cancelled' };
   const p = res.filePaths[0];
-  return { ok: true, exePath: p, version: readFileVersion(p), source: 'manual', signature: readSignature(p) };
+  return { ok: true, exePath: p, version: await readFileVersion(p), source: 'manual', signature: await readSignature(p) };
 });
 
+/**
+ * 读取数字签名状态（异步，避免阻塞主进程）。
+ */
 function readSignature(exePath) {
-  try {
-    const { execFileSync } = require('child_process');
-    const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+  return new Promise((resolve) => {
+    const { execFile } = require('child_process');
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
       `(Get-AuthenticodeSignature -LiteralPath '${exePath.replace(/'/g, "''")}').Status`],
-      { encoding: 'utf8', timeout: 15000, windowsHide: true });
-    return (out || '').trim() || 'Unknown';
-  } catch (e) {
-    return 'Unknown';
-  }
+      { encoding: 'utf8', timeout: 15000, windowsHide: true },
+      (err, stdout) => {
+        if (err) return resolve('Unknown');
+        resolve(String(stdout || '').trim() || 'Unknown');
+      });
+  });
 }
 
 // ---------------------------------------------------------------------------

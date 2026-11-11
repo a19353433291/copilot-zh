@@ -1,15 +1,13 @@
-// 调试注入失败：打印 exceptionDetails
-const path = require('path');
+// 诊断 settings:get IPC 耗时
 const http = require('http');
 const crypto = require('crypto');
 const net = require('net');
 
-const root = path.resolve(__dirname, '..');
-const packLib = require(path.join(root, 'src/core/dict/pack'));
+const PORT = 9333;
 
 function httpGet(p) {
   return new Promise((res, rej) => {
-    http.get({ host: '127.0.0.1', port: 9222, path: p }, r => {
+    http.get({ host: '127.0.0.1', port: PORT, path: p }, r => {
       let d = ''; r.on('data', c => d += c); r.on('end', () => res(d));
     }).on('error', rej);
   });
@@ -60,58 +58,49 @@ class WS {
     else { h = Buffer.alloc(10); h[0] = 0x81; h[1] = 0x80 | 127; h.writeBigUInt64BE(BigInt(data.length), 2); }
     this.sock.write(Buffer.concat([h, mask, masked]));
     return new Promise((res, rej) => { this.pending.set(id, { resolve: res, reject: rej });
-      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); rej(new Error('timeout')); } }, 20000); });
+      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); rej(new Error('timeout')); } }, 60000); });
   }
   close() { try { this.sock.destroy(); } catch (e) {} }
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 (async () => {
-  const curPack = path.join(process.env.APPDATA, 'copilot-zh', 'packs', 'current');
-  const loaded = packLib.loadPack(curPack);
-  const dict = loaded.dict;
-
-  // 检查字典里是否有会破坏 JS 源码的字符
-  const texts = dict.entries.texts;
-  const bad = [];
-  for (const [k, v] of Object.entries(texts)) {
-    for (const s of [k, v]) {
-      if (/[\u2028\u2029]/.test(s)) bad.push(['U+2028/2029', s]);
-      if (/[\r\n]/.test(s)) bad.push(['换行', s.slice(0, 40)]);
-    }
-  }
-  console.log('危险字符项:', bad.length);
-  bad.slice(0, 10).forEach(b => console.log('  ', b[0], JSON.stringify(b[1]).slice(0, 60)));
-
-  // 检查正则是否都能编译
-  const badRe = [];
-  for (const p of (dict.entries.patterns || [])) {
-    try { new RegExp(p[0], p[2] || ''); } catch (e) { badRe.push([p[0], e.message]); }
-  }
-  for (const p of (dict.entries.attrPatterns || [])) {
-    try { new RegExp(p[0], p[2] || ''); } catch (e) { badRe.push([p[0], e.message]); }
-  }
-  console.log('非法正则:', badRe.length);
-  badRe.forEach(b => console.log('  ', b[0], '→', b[1]));
-
-  // 构造最小注入测试
   const list = JSON.parse(await httpGet('/json/list'));
   const page = list.find(t => t.type === 'page');
   const ws = new WS(page.webSocketDebuggerUrl);
   await ws.connect();
 
-  const test1 = await ws.send('Runtime.evaluate', { expression: '1+1', returnByValue: true });
-  console.log('\n基础测试 1+1 =', test1.result && test1.result.value);
+  const ev = async (expr, awaitPromise = true) => {
+    const r = await ws.send('Runtime.evaluate', {
+      expression: expr, returnByValue: true, awaitPromise,
+    });
+    return r;
+  };
 
-  const expr = `(() => {
-    const DICT = ${JSON.stringify(dict)};
-    return { textCount: Object.keys(DICT.entries.texts).length, first: Object.keys(DICT.entries.texts)[0] };
-  })()`;
-  const r2 = await ws.send('Runtime.evaluate', { expression: expr, returnByValue: true });
-  if (r2.exceptionDetails) {
-    console.log('字典解析异常:', JSON.stringify(r2.exceptionDetails).slice(0, 600));
-  } else {
-    console.log('字典解析 OK:', JSON.stringify(r2.result.value));
+  console.log('=== 诊断 settings:get 耗时 ===');
+  const t0 = Date.now();
+  const r = await ev(`window.api.getSettings().then(x => JSON.stringify(x)).catch(e => 'ERR:' + e.message)`);
+  const dt = Date.now() - t0;
+  console.log(`  耗时: ${dt} ms`);
+  if (r && r.result) {
+    const v = String(r.result.value || '');
+    console.log('  返回:', v.slice(0, 300));
   }
+  if (r && r.exceptionDetails) {
+    console.log('  异常:', JSON.stringify(r.exceptionDetails).slice(0, 300));
+  }
+
+  console.log('\n=== 诊断 openSettings 是否同步抛错 ===');
+  const r2 = await ev(`
+    (() => {
+      try {
+        document.getElementById('btn-settings').click();
+        return 'clicked, hidden=' + document.getElementById('settings-modal').hidden;
+      } catch (e) { return 'THROW: ' + e.message; }
+    })()
+  `, false);
+  console.log('  结果:', r2 && r2.result ? r2.result.value : JSON.stringify(r2));
 
   ws.close();
 })().catch(e => { console.error('失败:', e.message); process.exit(1); });
