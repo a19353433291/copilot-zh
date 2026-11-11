@@ -471,6 +471,21 @@
       "^Previous featured cards$",
       "上一组精选卡片",
       ""
+    ],
+    [
+      "^Up to date\\. Last checked on (.+)$",
+      "已是最新版本。上次检查：$1",
+      ""
+    ],
+    [
+      "^Last checked on (.+)$",
+      "上次检查：$1",
+      ""
+    ],
+    [
+      "^([A-Za-z]+) (\\d{1,2}), (\\d{4})$",
+      "$3年$1$2日",
+      ""
     ]
   ],
   "attrs": {
@@ -504,6 +519,46 @@
     "Sticky note": "便签"
   },
   "attrPatterns": [
+    [
+      "^Mode: (.+), Ctrl \\+ Shift \\+ ([A-Z])$",
+      "模式：$1, Ctrl + Shift + $2",
+      ""
+    ],
+    [
+      "^Mode: (.+), Ctrl \\+ Shift \\+([A-Z])$",
+      "模式：$1, Ctrl + Shift + $2",
+      ""
+    ],
+    [
+      "^(.+), model and reasoning, Ctrl \\+ Shift \\+ ([A-Z])$",
+      "$1, 模型与推理, Ctrl + Shift + $2",
+      ""
+    ],
+    [
+      "^(.+), model and reasoning$",
+      "$1, 模型与推理",
+      ""
+    ],
+    [
+      "^Tool permissions, (.+)$",
+      "工具权限，$1",
+      ""
+    ],
+    [
+      "^Environment: (.+)$",
+      "环境：$1",
+      ""
+    ],
+    [
+      "^Repository: (.+)$",
+      "仓库：$1",
+      ""
+    ],
+    [
+      "^(.+), Shift \\+ (.+)$",
+      "$1, Shift + $2",
+      ""
+    ],
     [
       "^Back, Ctrl \\+ Left bracket$",
       "返回, Ctrl + [",
@@ -795,7 +850,81 @@
     "Work with Wix sites and business tools.": "使用 Wix 站点和商业工具。",
     "Work IQ": "Work IQ",
     "WorkIQ": "WorkIQ",
-    "You can start from scratch or turn an existing agent skill into an automation.": "你可以从零开始，或将已有的智能体技能转为自动化。"
+    "You can start from scratch or turn an existing agent skill into an automation.": "你可以从零开始，或将已有的智能体技能转为自动化。",
+    "Mode": "模式",
+    "Step-by-step collaboration": "逐步协作",
+    "Plan first, execute when ready": "先制定计划，就绪后执行",
+    "Autopilot": "自动驾驶",
+    "End-to-end execution without interruption": "端到端执行，不中断",
+    "Tool permissions": "工具权限",
+    "Approve all": "全部批准",
+    "Always ask": "始终询问",
+    "Ask before running tools.": "运行工具前询问。",
+    "Assisted": "辅助模式",
+    "Uses AI to reduce approval prompts.": "使用 AI 减少批准提示。",
+    "Run tools without asking.": "无需询问即可运行工具。",
+    "Model & reasoning": "模型与推理",
+    "Model and reasoning": "模型与推理",
+    "Environment": "环境",
+    "Environments": "环境",
+    "AI credits used: 0%": "已用 AI 积分：0%",
+    "Manage accounts": "管理账户",
+    "Accounts": "账户",
+    "Health check": "健康检查",
+    "What's new": "新功能",
+    "What’s new": "新功能",
+    "Help center": "帮助中心",
+    "Checking for updates...": "正在检查更新…",
+    "Checking for updates…": "正在检查更新…",
+    "Accessibility": "无障碍",
+    "Voice dictation": "语音听写",
+    "Computer Use": "Computer Use",
+    "Preview": "预览版",
+    "Model providers": "模型提供商",
+    "Experimental": "实验性功能",
+    "Version": "版本",
+    "Updates": "更新",
+    "Update": "更新",
+    "Up to date": "已是最新版本",
+    "Update available": "有可用更新",
+    "Downloading update…": "正在下载更新…",
+    "Downloading update...": "正在下载更新…",
+    "Restart to update": "重启以更新",
+    "Switch account": "切换账户",
+    "Add account": "添加账户",
+    "Personal account": "个人账户",
+    "Organization": "组织",
+    "Organizations": "组织",
+    "Loading...": "加载中…",
+    "Copied to clipboard": "已复制到剪贴板",
+    "Copy to clipboard": "复制到剪贴板",
+    "Report an issue": "报告问题",
+    "Send feedback": "发送反馈",
+    "Privacy statement": "隐私声明",
+    "Terms of service": "服务条款",
+    "Release notes": "发布说明",
+    "Changelog": "更新日志",
+    "Tool permissions, Approve all": "工具权限，全部批准",
+    "Build a weather app that shows live forecasts. Creates a sample folder.": "构建一个显示实时天气的应用。创建示例文件夹。",
+    "Build a personal landing page with dark mode. Creates a sample folder.": "构建一个带深色模式的个人落地页。创建示例文件夹。",
+    "Create a space exploration quiz with animated feedback. Creates a sample folder.": "创建一个带动态反馈的太空探索问答。创建示例文件夹。",
+    "New session, Ctrl + N. New chat, Ctrl + Shift + N.": "新建会话 Ctrl + N。新建对话 Ctrl + Shift + N。",
+    "Build a to-do web app with smooth animations.": "构建一个带流畅动画的待办事项 Web 应用。",
+    "Create a to-do web app with smooth animations.": "创建一个带流畅动画的待办事项 Web 应用。",
+    "Build a personal portfolio site.": "构建一个个人作品集网站。",
+    "Create a personal portfolio site.": "创建一个个人作品集网站。",
+    "Build a markdown blog.": "构建一个 Markdown 博客。",
+    "Create a markdown blog.": "创建一个 Markdown 博客。",
+    "Build a pomodoro timer.": "构建一个番茄钟计时器。",
+    "Create a pomodoro timer.": "创建一个番茄钟计时器。",
+    "Build a weather dashboard.": "构建一个天气仪表板。",
+    "Build a habit tracker.": "构建一个习惯追踪器。",
+    "Build a recipe finder.": "构建一个食谱查找器。",
+    "Build a quiz app.": "构建一个测验应用。",
+    "Build a landing page.": "构建一个落地页。",
+    "Build a chat app.": "构建一个聊天应用。",
+    "Build a dashboard.": "构建一个仪表板。",
+    "Build a game.": "构建一个游戏。"
   },
   "_keepOriginal": [
     "Airtable",
@@ -846,5 +975,6 @@
     "Wix",
     "PlanetScale",
     "Supabase"
-  ]
+  ],
+  "_dateLocalize": true
 }

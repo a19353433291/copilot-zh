@@ -264,6 +264,76 @@ function buildTranslatorSource(dict) {
     try { return !!el.closest(SKIP); } catch (e) { return false; }
   }
 
+  // ---------------------------------------------------------------------
+  // 日期时间本地化
+  // 目标：把 "November 11, 2026, at 10:21 PM" 变成 "2026年11月11日 22:21"
+  // 字典只能做文本替换、无法计算，所以日期必须在运行时处理。
+  // ---------------------------------------------------------------------
+  const MONTHS = {
+    january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+    july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+    jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8,
+    sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+  };
+
+  /** 把 12 小时制转 24 小时制，输出 HH:mm */
+  function to24h(h, m, ampm) {
+    let hh = parseInt(h, 10);
+    const mm = String(m).padStart(2, '0');
+    if (ampm) {
+      const up = ampm.toUpperCase();
+      if (up === 'PM' && hh < 12) hh += 12;
+      if (up === 'AM' && hh === 12) hh = 0;
+    }
+    return String(hh).padStart(2, '0') + ':' + mm;
+  }
+
+  /**
+   * 尝试把一段文本中的英文日期时间替换为中文习惯格式。
+   * 支持：
+   *   November 11, 2026, at 10:21 PM  → 2026年11月11日 22:21
+   *   November 11, 2026               → 2026年11月11日
+   *   10:21 PM                        → 22:21
+   * @returns {string|null} 转换后的文本，无匹配返回 null
+   */
+  function localizeDateTime(s) {
+    let out = s;
+    let changed = false;
+
+    // 1) 完整日期 + 时间
+    out = out.replace(
+      /([A-Za-z]{3,9})\\.?\\s+(\\d{1,2}),\\s*(\\d{4}),?\\s*(?:at\\s*)?(\\d{1,2}):(\\d{2})\\s*([AP]M)?/gi,
+      (m, mon, day, year, hh, mi, ap) => {
+        const n = MONTHS[String(mon).toLowerCase()];
+        if (!n) return m;
+        changed = true;
+        return year + '年' + n + '月' + parseInt(day, 10) + '日 ' + to24h(hh, mi, ap);
+      }
+    );
+
+    // 2) 只有日期
+    out = out.replace(
+      /([A-Za-z]{3,9})\\.?\\s+(\\d{1,2}),\\s*(\\d{4})/g,
+      (m, mon, day, year) => {
+        const n = MONTHS[String(mon).toLowerCase()];
+        if (!n) return m;
+        changed = true;
+        return year + '年' + n + '月' + parseInt(day, 10) + '日';
+      }
+    );
+
+    // 3) 只有时间（AM/PM）
+    out = out.replace(
+      /\\b(\\d{1,2}):(\\d{2})\\s*([AP]M)\\b/gi,
+      (m, hh, mi, ap) => {
+        changed = true;
+        return to24h(hh, mi, ap);
+      }
+    );
+
+    return changed ? out : null;
+  }
+
   function translateText(node) {
     const raw = node.nodeValue;
     if (!raw) return;
@@ -285,11 +355,19 @@ function buildTranslatorSource(dict) {
       if (re.test(t)) {
         const v = t.replace(re, rep);
         if (v !== t) {
-          node.nodeValue = raw.replace(t, v);
+          // 正则替换后再做日期本地化（例如 "上次检查：November 11, 2026, at 10:21 PM"）
+          const localized = localizeDateTime(v);
+          node.nodeValue = raw.replace(t, localized || v);
           replaced++;
         }
         return;
       }
+    }
+    // 兜底：整段都是英文日期时间
+    const loc = localizeDateTime(t);
+    if (loc) {
+      node.nodeValue = raw.replace(t, loc);
+      replaced++;
     }
   }
 
@@ -297,11 +375,49 @@ function buildTranslatorSource(dict) {
     for (const name of ['placeholder', 'title', 'aria-label', 'alt']) {
       const v = el.getAttribute && el.getAttribute(name);
       if (!v) continue;
+
+      // 1) attrs 精确匹配
       if (attrs[v] !== undefined) { el.setAttribute(name, attrs[v]); replaced++; continue; }
+
+      // 2) 回退到 texts 精确匹配
+      //    很多 aria-label 与可见文案完全一样（如 "Send message"），
+      //    若只在 attrs 里找会漏掉；这里共享同一份精确词典。
+      if (texts[v] !== undefined) { el.setAttribute(name, texts[v]); replaced++; continue; }
+
+      // 3) 属性专用正则
+      let hit = false;
       for (let i = 0; i < attrPatterns.length; i++) {
         const [re, rep] = attrPatterns[i];
-        if (re.test(v)) { el.setAttribute(name, v.replace(re, rep)); replaced++; break; }
+        if (re.test(v)) {
+          let nv = v.replace(re, rep);
+          const loc = localizeDateTime(nv);
+          el.setAttribute(name, loc || nv);
+          replaced++;
+          hit = true;
+          break;
+        }
       }
+      if (hit) continue;
+
+      // 4) 通用文本正则（属性里也可能出现动态文案）
+      for (let i = 0; i < patterns.length; i++) {
+        const [re, rep] = patterns[i];
+        if (re.test(v)) {
+          const nv = v.replace(re, rep);
+          if (nv !== v) {
+            const loc = localizeDateTime(nv);
+            el.setAttribute(name, loc || nv);
+            replaced++;
+            hit = true;
+            break;
+          }
+        }
+      }
+      if (hit) continue;
+
+      // 5) 属性里含日期
+      const loc2 = localizeDateTime(v);
+      if (loc2) { el.setAttribute(name, loc2); replaced++; }
     }
   }
 
@@ -325,12 +441,40 @@ function buildTranslatorSource(dict) {
     return replaced - before;
   }
 
+  // ---------------------------------------------------------------------
+  // 持续补偿：
+  // React 应用会分批渲染，首次 apply 时很多元素（尤其是 aria-label 属性）
+  // 尚未挂载，MutationObserver 也可能因防抖而错过。
+  // 因此保留一个低频定时器做兜底扫描，直到连续多次无新增为止。
+  // ---------------------------------------------------------------------
+  let idleRounds = 0;
+  let sweepTimer = null;
+
+  function sweep() {
+    if (!window.__copilotZh || !window.__copilotZh.running) return;
+    const n = apply();
+    if (n > 0) {
+      idleRounds = 0;
+    } else {
+      idleRounds++;
+      // 连续 20 次（约 10 秒）无新增，降到低频巡检
+      if (idleRounds === 20) {
+        clearInterval(sweepTimer);
+        sweepTimer = setInterval(sweep, 3000);
+      }
+    }
+  }
+
   const observer = new MutationObserver(muts => {
     // 防抖：React 频繁重渲染时避免卡顿
     if (Date.now() - lastRun < 120) return;
     for (const m of muts) {
       if (m.type === 'characterData') translateText(m.target);
-      else for (const n of m.addedNodes) walk(n);
+      else if (m.type === 'attributes' && m.target && m.target.getAttribute) {
+        translateAttrs(m.target);
+      } else {
+        for (const n of m.addedNodes) walk(n);
+      }
     }
     lastRun = Date.now();
   });
@@ -343,6 +487,8 @@ function buildTranslatorSource(dict) {
         attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'alt'],
       });
     } catch (e) {}
+    // 密集扫描：每 500ms 补偿一次，覆盖 React 分批渲染的窗口
+    sweepTimer = setInterval(sweep, 500);
     document.documentElement.lang = 'zh-CN';
     if (document.title === 'GitHub Copilot') document.title = 'GitHub Copilot（中文）';
   }
@@ -356,8 +502,13 @@ function buildTranslatorSource(dict) {
   window.__copilotZh = {
     dict: DICT,
     apply,
-    stop() { try { observer.disconnect(); } catch (e) {} },
-    stats() { return { replaced, running: true }; },
+    running: true,
+    stop() {
+      this.running = false;
+      try { observer.disconnect(); } catch (e) {}
+      if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
+    },
+    stats() { return { replaced, running: this.running }; },
   };
   return { replaced, running: true };
 })();`;
