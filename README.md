@@ -1,8 +1,21 @@
-# CopilotZh — GitHub Copilot 桌面版汉化工具
+# Copilot 汉化助手
+
+> 仓库标识：`copilot-zh` ｜ 可执行文件：`CopilotHan.exe`
 
 Windows 桌面应用，为 **GitHub Copilot 桌面版**（Tauri + WebView2）提供简体中文界面。
 
 > 非官方社区工具，与 GitHub 公司无关。
+
+## 命名说明
+
+| 用途 | 名称 |
+|---|---|
+| 界面显示名 / 安装包 / 快捷方式 | Copilot 汉化助手 |
+| 仓库名 / npm 包名 | copilot-zh |
+| 可执行文件名 | CopilotHan.exe |
+| 用户数据目录 | `%APPDATA%\copilot-zh`（**固定不变**，保证升级不丢字典） |
+
+> 数据目录刻意与显示名解耦：产品改名不影响数据位置，避免老用户升级后字典「消失」。
 
 ## 已实现功能
 
@@ -23,7 +36,7 @@ Windows 桌面应用，为 **GitHub Copilot 桌面版**（Tauri + WebView2）提
 
 | 项目 | 位置 |
 |---|---|
-| 程序文件 | `%LOCALAPPDATA%\Programs\CopilotZh` |
+| 程序文件 | `%LOCALAPPDATA%\Programs\Copilot 汉化助手` |
 | 用户数据（字典包、日志、备份） | `%APPDATA%\copilot-zh` |
 | 更新缓存 | `%LOCALAPPDATA%\copilot-zh-updater` |
 | WebView2 调试策略值 | `HKLM\...\WebView2\AdditionalBrowserArguments\github.exe` |
@@ -63,7 +76,7 @@ npm start
 npm run build
 ```
 
-产物：`dist/CopilotZh-Setup-0.1.0.exe`
+产物：`dist/CopilotHan-Setup-0.2.0.exe`
 
 ### 生成字典包
 
@@ -75,7 +88,7 @@ node scripts/make-sample-pack.js
 
 ## 使用流程
 
-1. 启动 CopilotZh（模式 A 需要**管理员权限**）
+1. 启动「Copilot 汉化助手」（模式 A 需要**管理员权限**）
 2. 自动检测 GitHub Copilot 路径与版本
 3. 选择「模式 A：运行时注入」
 4. 导入字典包（或使用已安装的）
@@ -112,7 +125,7 @@ copilot-zh/
 
 | 位置 | 内容 | 卸载时 |
 |---|---|---|
-| `%LOCALAPPDATA%\Programs\CopilotZh` | 软件本体 | 删除 |
+| `%LOCALAPPDATA%\Programs\Copilot 汉化助手` | 软件本体 | 删除 |
 | `%APPDATA%\copilot-zh\packs` | 字典包 | 保留 |
 | `%APPDATA%\copilot-zh\logs` | 日志 | 保留 |
 | `%APPDATA%\copilot-zh\backups` | 模式B的 exe 备份 | 保留 |

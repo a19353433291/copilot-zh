@@ -18,8 +18,20 @@ if (process.platform === 'win32') registerWin32();
 
 let mainWindow = null;
 
-// 用户数据目录：%APPDATA%\<appName>
-const USER_DIR = app.getPath('userData');
+// 产品显示名（安装包、窗口标题用）
+const PRODUCT_NAME = 'Copilot 汉化助手';
+
+/**
+ * 固定用户数据目录为 %APPDATA%\copilot-zh。
+ *
+ * 重要：不能让 Electron 用 app.getName() 自动推导。
+ * 因为 productName 是中文时，userData 会变成中文目录
+ * （%APPDATA%\Copilot 汉化助手），用户升级后旧字典「消失」。
+ * 显式固定后，产品改名不影响数据位置。
+ */
+const USER_DIR = path.join(app.getPath('appData'), 'copilot-zh');
+app.setPath('userData', USER_DIR);
+
 const PACKS_DIR = path.join(USER_DIR, 'packs');
 const CURRENT_PACK = path.join(PACKS_DIR, 'current');
 
@@ -61,7 +73,7 @@ function createWindow() {
     height: 760,
     minWidth: 900,
     minHeight: 620,
-    title: 'CopilotZh — GitHub Copilot 汉化工具',
+    title: PRODUCT_NAME + ' — GitHub Copilot 汉化工具',
     backgroundColor: '#0d1117',
     show: false,
     webPreferences: {

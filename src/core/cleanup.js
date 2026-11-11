@@ -147,7 +147,8 @@ function collectTraces(opts = {}) {
     // 所有可能由 Electron / electron-updater 创建的目录
     const appData = process.env.APPDATA || '';
     const localAppData = process.env.LOCALAPPDATA || '';
-    const names = ['copilot-zh', 'CopilotZh'];
+    // 主目录名固定为 copilot-zh；其余为历史命名与改名兼容
+    const names = ['copilot-zh', 'CopilotZh', 'Copilot 汉化助手'];
     if (appData) {
       for (const n of names) traces.push(dirTrace('appdata-' + n, '用户数据：' + n, path.join(appData, n)));
     }
