@@ -90,16 +90,34 @@ function scheduleDeleteAfterExit(opts) {
     return { ok: false, reason: '写入清理脚本失败: ' + e.message };
   }
 
-  // 用 detached 方式启动，确保父进程退出后仍运行
+  // 用隐藏方式启动清理脚本。
+  //
+  // 为什么不用 cmd /c start /b：
+  //   start 会派生一个新的控制台宿主，即使加了 /b、windowsHide，
+  //   在部分 Windows 版本上仍会闪出黑窗口。用户明确反馈过这个问题。
+  //
+  // 改用 wscript.exe 执行一个极小的 VBScript：
+  //   WScript.Shell.Run(cmd, 0, False) 的第 2 个参数 0 = 隐藏窗口，
+  //   第 3 个参数 False = 不等待。这是 Windows 上最可靠的静默启动方式。
   const { spawn } = require('child_process');
   try {
-    const child = spawn('cmd.exe', ['/c', 'start', '/b', '', scriptPath], {
+    const vbsPath = path.join(os.tmpdir(), `copilot-zh-run-${stamp}.vbs`);
+    // 用 chr(34) 拼接引号，避免路径含空格或中文时的转义问题
+    const q = String.fromCharCode(34);
+    const vbs =
+      'Set sh = CreateObject("WScript.Shell")\r\n' +
+      'sh.Run ' + q + 'cmd.exe /c ' + q + q + ' ' + scriptPath + ' ' + q + q + ', 0, False\r\n';
+    fs.writeFileSync(vbsPath, vbs, 'utf8');
+
+    const child = spawn('wscript.exe', ['//Nologo', vbsPath], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
     });
     child.unref();
-    return { ok: true, scriptPath, logFile, dirs };
+
+    // VBScript 会在启动 cmd 后立即退出，稍后自行删除
+    return { ok: true, scriptPath, logFile, dirs, launcher: vbsPath };
   } catch (e) {
     return { ok: false, reason: '启动清理脚本失败: ' + e.message };
   }

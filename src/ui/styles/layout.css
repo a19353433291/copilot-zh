@@ -135,9 +135,9 @@
      所以侧边栏需要把内容往下推，避免导航项被标题栏压住。 */
   margin-top: calc(-1 * var(--titlebar-h));
   padding-top: var(--titlebar-h);
-  /* 底部留出与浮起面板相同的间距（--space-3 = 12px），
-     让 sidebar-foot 的上边框与右侧 statusbar 的上边框落在同一水平线 */
-  padding-bottom: var(--space-3);
+  /* 底部为绝对定位的 sidebar-foot 留出空间：
+     12px 外边距 + 状态栏高度 */
+  padding-bottom: calc(var(--space-3) + var(--statusbar-h));
 }
 
 /* 侧边栏玻璃
@@ -235,20 +235,22 @@
 
 /* 底部状态：与右侧状态栏严格对齐
    --------------------------------------------------------------------------
-   侧边栏底部与 .statusbar 是两条独立的横线，必须落在同一水平位置。
-   之前差 13px 的原因：
-     .content-area 有 margin-bottom: 12px（浮起面板的底边距），
-     而 .sidebar 没有，于是状态栏被推高了 12px（再 +1px 边框 = 13px）。
-   解法：给侧边栏相同的底部间距，两条线自然对齐。 */
+   为什么用绝对定位：
+     浮点像素累积会让两侧的落点差 0.5~1px（实测 719.33 vs 720）。
+     把 sidebar-foot 也绝对定位到「容器底部 + 12px」，
+     而 .content-area 的 margin-bottom 同样是 12px，
+     两者基准完全一致，不再受各自内部布局影响。 */
 .sidebar-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-3);
   height: var(--statusbar-h);
-  min-height: var(--statusbar-h);
   padding: 0 14px;
   display: flex;
   align-items: center;
   border-top: 1px solid var(--divider);
   -webkit-app-region: no-drag;
-  flex-shrink: 0;
   box-sizing: border-box;
 }
 
@@ -269,32 +271,41 @@
 
 /* ---------- 主区域：浮起的页面面板 ---------- */
 .content-area {
-  display: grid;
-  grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
+  /* 不用 grid：grid 的 1fr 会产生小数高度（实测 628.667px），
+     导致底部状态栏落点出现 1px 偏差，与侧边栏底部对不齐。
+     改为 flex + 绝对定位底部条，让落点完全确定。 */
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
-  /* 浮起面板：四周留出背景色，形成完整的浮动感。
-     顶部留 2px 是因为 .app 已经有 titlebar-h 的 padding，
-     这里再加一点让圆角完整显示。 */
   margin: 2px var(--space-3) var(--space-3) 0;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-subtle);
   background: var(--surface);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  /* 用 box-shadow 画边框，不用 border：
+     border 会占据布局空间，导致内部绝对定位的状态栏
+     贴在内边距盒上、比边框盒高 1px，与侧边栏底部对不齐（实测差 0.667px）。
+     box-shadow 不参与布局，内边距盒 == 边框盒，两侧落点完全一致。 */
+  box-shadow:
+    0 0 0 1px var(--border-subtle),
+    0 1px 3px rgba(0, 0, 0, 0.04);
   transition:
-    background-color var(--dur-normal) var(--ease-standard),
-    border-color var(--dur-normal) var(--ease-standard);
-  /* 关键：让面板顶部与标题栏底部对齐，圆角不被裁切 */
+    background-color var(--dur-normal) var(--ease-standard);
   position: relative;
+  /* 给绝对定位的状态栏留出空间 */
+  padding-bottom: var(--statusbar-h);
 }
 
 :root[data-theme="dark"] .content-area {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+  box-shadow:
+    0 0 0 1px var(--border-subtle),
+    0 1px 3px rgba(0, 0, 0, 0.24);
 }
 
 /* 顶栏：面板内部的标题条，与面板同色 */
 .topbar {
+  flex-shrink: 0;
+  height: var(--topbar-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -338,6 +349,8 @@
 
 /* 内容滚动区 */
 .pages {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--page-padding-y) var(--page-padding-x) var(--space-9);
@@ -357,8 +370,17 @@
   gap: var(--space-8);
 }
 
-/* 状态栏：面板内部的底部细条 */
+/* 状态栏：面板内部的底部细条
+   --------------------------------------------------------------------------
+   用绝对定位而非 grid 行，保证落点精确：
+   面板底边 = 窗口底 - 12px 外边距，状态栏贴住面板底边，
+   与侧边栏 sidebar-foot 的上边框严格同高。 */
 .statusbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--statusbar-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -368,6 +390,7 @@
   background: transparent;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+  box-sizing: border-box;
   transition: background-color var(--dur-normal) var(--ease-standard);
 }
 

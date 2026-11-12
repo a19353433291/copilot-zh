@@ -15,6 +15,8 @@
 const https = require('https');
 const http = require('http');
 
+const { compareTag, pickByChannel } = require('./channel');
+
 const USER_AGENT = 'CopilotHan-Updater/1.0';
 
 /**
@@ -23,7 +25,7 @@ const USER_AGENT = 'CopilotHan-Updater/1.0';
  */
 function request(url, opts = {}) {
   const {
-    timeout = 20000,
+    timeout = 12000,
     maxRedirects = 5,
     headers = {},
     onProgress = null,
@@ -160,25 +162,6 @@ function parseYml(text) {
   return out;
 }
 
-/**
- * 比较两个 tag 的版本序列（用于从列表中挑最大的）。
- * 避免循环依赖 updater.js，这里实现一份轻量的。
- */
-function compareTag(a, b) {
-  const norm = (v) => String(v || '0')
-    .replace(/^v/i, '')
-    .split('-')[0]
-    .split('.')
-    .map(x => parseInt(x, 10) || 0);
-  const pa = norm(a), pb = norm(b);
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const va = pa[i] || 0, vb = pb[i] || 0;
-    if (va > vb) return 1;
-    if (va < vb) return -1;
-  }
-  return 0;
-}
 
 /**
  * GitHub 源。
@@ -196,60 +179,44 @@ class GitHubSource {
 
   /**
    * @param {(msg:string)=>void} onLog 可选日志回调
+   * @param {'stable'|'beta'} channel 渠道：正式版 / 测试版
    */
-  async fetchLatest(onLog = () => {}) {
+  async fetchLatest(onLog = () => {}, channel = 'stable') {
     const headers = { 'Accept': 'application/vnd.github+json' };
     if (this.token) headers['Authorization'] = 'Bearer ' + this.token;
 
     onLog('查询 GitHub 最新版本…');
 
-    // 关键：/releases/latest 会跳过 prerelease。
-    // 预览版（prerelease=true）的 Release 在该接口下返回 404，
-    // 导致「包含预览版的仓库」永远检查不到更新。
-    // 因此先尝试 latest，失败则回退到列表接口，自行挑选最新版本。
-    let data = null;
-    let usedFallback = false;
-
+    // 统一走列表接口 + 渠道筛选。
+    //
+    // 为什么不用 /releases/latest：
+    //   该接口会跳过 prerelease，仓库只发预览版时直接 404。
+    //   而且它无法区分「正式版/测试版」两种渠道需求。
+    // 列表接口能同时拿到两者的标记，自己筛选更可控。
+    let list = null;
     try {
-      data = await requestJson(
-        `https://api.github.com/repos/${this.owner}/${this.repo}/releases/latest`,
+      list = await requestJson(
+        `https://api.github.com/repos/${this.owner}/${this.repo}/releases?per_page=50`,
         { headers, timeout: 20000 }
       );
     } catch (e) {
-      // 404 通常意味着「只有预览版」，回退到列表接口
       if (String(e.message).includes('404')) {
-        onLog('未找到正式版，改查全部 Release（含预览版）…');
-        usedFallback = true;
-        try {
-          const list = await requestJson(
-            `https://api.github.com/repos/${this.owner}/${this.repo}/releases?per_page=30`,
-            { headers, timeout: 20000 }
-          );
-          if (!Array.isArray(list) || !list.length) {
-            return { ok: false, reason: '该仓库还没有发布任何 Release' };
-          }
-          // 过滤草稿，按版本号比较取最大（不依赖列表顺序）
-          const candidates = list.filter(x => !x.draft);
-          if (!candidates.length) {
-            return { ok: false, reason: '该仓库还没有发布任何 Release' };
-          }
-          data = candidates.reduce((best, cur) => {
-            const curV = String(cur.tag_name || '').replace(/^v/i, '');
-            const bestV = String(best.tag_name || '').replace(/^v/i, '');
-            return compareTag(curV, bestV) > 0 ? cur : best;
-          });
-          if (data.prerelease) {
-            onLog('注意：当前最新版本是预览版（' + data.tag_name + '）');
-          }
-        } catch (e2) {
-          return { ok: false, reason: '查询失败：' + e2.message };
-        }
-      } else {
-        return { ok: false, reason: '查询失败：' + e.message };
+        return { ok: false, reason: '仓库不存在或无权访问' };
       }
+      return { ok: false, reason: '查询失败：' + e.message };
     }
 
-    if (!data) return { ok: false, reason: '查询失败：无响应' };
+    if (!Array.isArray(list) || !list.length) {
+      return { ok: false, reason: '该仓库还没有发布任何 Release' };
+    }
+
+    const picked = pickByChannel(list, channel);
+    if (!picked.release) {
+      return { ok: false, reason: picked.note || '没有可用的 Release' };
+    }
+    const data = picked.release;
+    if (picked.note) onLog(picked.note);
+    if (picked.isBeta) onLog('当前渠道命中的是预览版（' + data.tag_name + '）');
 
     const tag = String(data.tag_name || '').replace(/^v/i, '');
     if (!tag) return { ok: false, reason: 'Release 缺少版本号' };
@@ -286,7 +253,7 @@ class GitHubSource {
       publishedAt: data.published_at || null,
       htmlUrl: data.html_url || '',
       prerelease: !!data.prerelease,
-      fromFallback: usedFallback,
+      channel,
       assets: {
         exeUrl: exeAsset.browser_download_url,
         exeName: exeAsset.name,
@@ -312,38 +279,39 @@ class GiteeSource {
     this.token = token;
   }
 
-  async fetchLatest(onLog = () => {}) {
+  /**
+   * @param {(msg:string)=>void} onLog
+   * @param {'stable'|'beta'} channel
+   */
+  async fetchLatest(onLog = () => {}, channel = 'stable') {
     const base = `https://gitee.com/api/v5/repos/${this.owner}/${this.repo}/releases`;
     const q = this.token ? '?access_token=' + encodeURIComponent(this.token) : '';
 
     onLog('查询 Gitee 最新版本…');
 
-    // 与 GitHub 同样的坑：/releases/latest 会跳过 prerelease。
-    // Gitee 的 latest 接口行为类似，因此这里直接用列表接口自行挑最新。
-    let data = null;
+    // 与 GitHub 一致：直接用列表接口 + 渠道筛选，
+    // 不用 /releases/latest（它会跳过 prerelease，且无法区分渠道）。
+    let list = null;
     try {
-      const list = await requestJson(`${base}${q}`, { timeout: 20000 });
-      if (!Array.isArray(list) || !list.length) {
-        return { ok: false, reason: '该仓库还没有发布任何 Release' };
-      }
-      const candidates = list.filter(x => !x.draft);
-      if (!candidates.length) {
-        return { ok: false, reason: '该仓库还没有发布任何 Release' };
-      }
-      data = candidates.reduce((best, cur) => {
-        const curV = String(cur.tag_name || '').replace(/^v/i, '');
-        const bestV = String(best.tag_name || '').replace(/^v/i, '');
-        return compareTag(curV, bestV) > 0 ? cur : best;
-      });
-      if (data.prerelease) {
-        onLog('注意：当前最新版本是预览版（' + data.tag_name + '）');
-      }
+      list = await requestJson(`${base}${q}`, { timeout: 20000 });
     } catch (e) {
       if (String(e.message).includes('404')) {
-        return { ok: false, reason: '该仓库还没有发布任何 Release' };
+        return { ok: false, reason: '仓库不存在或无权访问' };
       }
       return { ok: false, reason: '查询失败：' + e.message };
     }
+
+    if (!Array.isArray(list) || !list.length) {
+      return { ok: false, reason: '该仓库还没有发布任何 Release' };
+    }
+
+    const picked = pickByChannel(list, channel);
+    if (!picked.release) {
+      return { ok: false, reason: picked.note || '没有可用的 Release' };
+    }
+    const data = picked.release;
+    if (picked.note) onLog(picked.note);
+    if (picked.isBeta) onLog('当前渠道命中的是预览版（' + data.tag_name + '）');
 
     const tag = String(data.tag_name || '').replace(/^v/i, '');
     if (!tag) return { ok: false, reason: 'Release 缺少版本号' };
@@ -382,6 +350,7 @@ class GiteeSource {
       publishedAt: data.created_at || null,
       htmlUrl: data.html_url || '',
       prerelease: !!data.prerelease,
+      channel,
       assets: {
         exeUrl,
         exeName: exeAsset.name,
@@ -393,11 +362,6 @@ class GiteeSource {
     };
   }
 }
-
-/**
- * 自定义源：直接给 baseUrl，按约定读取 latest.yml。
- * 用于自建服务器或镜像站。
- */
 class GenericSource {
   constructor({ baseUrl }) {
     this.id = 'generic';

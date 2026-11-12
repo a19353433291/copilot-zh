@@ -107,21 +107,51 @@ const Dialog = (() => {
       };
 
       // 按钮事件
-      mask.querySelector('[data-act="confirm"]').addEventListener('click', () => close(true));
+      mask.querySelector('[data-act="confirm"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        close(true);
+      });
       const cancelBtn = mask.querySelector('[data-act="cancel"]');
-      if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          close(false);
+        });
+      }
 
       // 点遮罩关闭
       mask.addEventListener('click', (e) => {
         if (e.target === mask) close(false);
       });
 
-      // ESC 关闭
+      // ESC 关闭 / Enter 确认
+      // 注意：不能用 {once:true}，否则第一次按键（哪怕是 Tab/方向键）
+      // 会消费掉监听器，导致之后 ESC 失效。
       const onKey = (e) => {
-        if (e.key === 'Escape') { e.preventDefault(); close(false); }
-        else if (e.key === 'Enter') { e.preventDefault(); close(true); }
+        if (!document.body.contains(mask)) {
+          document.removeEventListener('keydown', onKey);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          document.removeEventListener('keydown', onKey);
+          close(false);
+        } else if (e.key === 'Enter') {
+          // 焦点在取消按钮上时，Enter 应触发取消（危险操作的安全默认）
+          const focused = document.activeElement;
+          if (focused && focused.dataset && focused.dataset.act === 'cancel') {
+            e.preventDefault();
+            document.removeEventListener('keydown', onKey);
+            close(false);
+            return;
+          }
+          e.preventDefault();
+          document.removeEventListener('keydown', onKey);
+          close(true);
+        }
       };
-      document.addEventListener('keydown', onKey, { once: true });
+      document.addEventListener('keydown', onKey);
 
       // 焦点：危险操作默认落在取消上，安全操作落在确认上
       requestAnimationFrame(() => {

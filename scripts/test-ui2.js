@@ -148,7 +148,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try { saved = JSON.parse(savedJson); } catch (e) {}
   const keys = Object.keys(saved);
   console.log('  磁盘设置项:', keys.join(', '));
-  check('设置项总数 15', keys.length, 15);
+  check('设置项总数 16', keys.length, 16);
   check('theme 已持久化', typeof saved.theme, 'string');
   check('motion 已持久化', typeof saved.motion, 'string');
   check('原有 launch 设置仍在', typeof saved.launchCopilotAfterApply, 'boolean');

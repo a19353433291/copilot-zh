@@ -19,6 +19,7 @@ const ENUMS = {
   theme: ['light', 'dark', 'system'],
   motion: ['on', 'off'],
   updateSource: ['github', 'gitee', 'generic'],
+  updateChannel: ['stable', 'beta'],
 };
 
 /**
@@ -108,6 +109,12 @@ const DEFAULTS = {
    * 国内用户建议 gitee（速度快），海外用户建议 github。
    */
   updateSource: 'github',
+
+  /**
+   * 更新渠道：stable（正式版）/ beta（测试版）
+   * beta 会优先取标记为 prerelease 的 Release。
+   */
+  updateChannel: 'stable',
 
   /** 启动时自动检查更新（延迟 5 秒，不阻塞首屏） */
   checkUpdateOnStart: true,

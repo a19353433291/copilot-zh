@@ -1,5 +1,6 @@
 ; Copilot 汉化助手 自定义 NSIS 脚本
-; 目的：卸载时绝对不残留任何文件、注册表项、快捷方式。
+; 目的：卸载时绝对不残留任何文件、注册表项、快捷方式；
+;       并让安装/卸载向导的文案与主程序的设计语言一致。
 ;
 ; electron-builder 内置的 deleteAppDataOnUninstall 对非 oneClick 安装器不可靠，
 ; 因此这里显式删除所有本工具可能产生的痕迹。
@@ -8,7 +9,23 @@
 ; 以保持升级兼容。改名时务必同步检查 electron/main.js 的 app.setPath('userData')。
 
 ; ---------------------------------------------------------------------------
-; 卸载前：强制结束所有相关进程
+; 界面文案：覆盖 NSIS 默认的系统腔
+; ---------------------------------------------------------------------------
+; 说明：electron-builder 没有提供 customHeader 之类的钩子去改 MUI 页面文案，
+; MUI_PAGE_FINISH 在其模板里已经展开，事后再 !define 不生效。
+; 所以这里不做文案替换，而是把重点放在真正能控制的地方：
+;   - 侧边图（installerSidebar.bmp）承载品牌与「转译」记忆点
+;   - 顶部横幅（installerHeader.bmp）承载产品名
+; 这两张图在所有向导页都可见，是视觉主体。
+; ---------------------------------------------------------------------------
+
+; ---------------------------------------------------------------------------
+; 安装完成后的收尾
+; ---------------------------------------------------------------------------
+!macro customInstall
+  ; 清理旧版本可能留下的同名调试策略，避免叠加
+  DeleteRegValue HKCU "SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments" "github.exe"
+!macroend
 ; 为什么必须在最前面做：
 ;   1. 程序运行时 exe 被锁定，删除会失败
 ;   2. 用户数据目录（%APPDATA%\copilot-zh）被 Electron 的多进程占用，
@@ -134,9 +151,4 @@
   RMDir /r "$TEMP\copilot-zh"
   RMDir /r "$TEMP\CopilotZh"
   RMDir /r "$TEMP\Copilot 汉化助手"
-!macroend
-
-; 安装时清理旧版本可能留下的同名调试策略，避免叠加
-!macro customInstall
-  DeleteRegValue HKCU "SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments" "github.exe"
 !macroend

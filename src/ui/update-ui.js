@@ -42,7 +42,8 @@ const UpdateUI = (() => {
       currentEl.textContent = 'v' + (st.currentVersion || '—') + ' · 更新源：' + sourceName(st.sourceId);
     }
 
-    // 徽章
+    // 徽章：没有实质状态时整体隐藏，不显示「—」这种空占位
+    // （用户反馈过那个短横线看起来像一条莫名其妙的线）
     if (badge) {
       const map = {
         idle: ['', '已是最新'],
@@ -52,10 +53,17 @@ const UpdateUI = (() => {
         ready: ['ok', '可安装'],
         error: ['err', '检查失败'],
       };
-      const [kind, text] = map[st.state] || ['', '—'];
-      // idle 且没有 latestVersion 时显示「—」
-      badge.className = 'badge' + (kind ? ' ' + kind : '');
-      badge.textContent = (st.state === 'idle' && !st.latestVersion) ? '—' : text;
+      const [kind, text] = map[st.state] || ['', ''];
+      const hasMeaning = st.state !== 'idle' || Boolean(st.latestVersion);
+      if (hasMeaning && text) {
+        badge.className = 'badge' + (kind ? ' ' + kind : '');
+        badge.textContent = text;
+        badge.hidden = false;
+      } else {
+        badge.className = 'badge';
+        badge.textContent = '';
+        badge.hidden = true;
+      }
     }
 
     // 进度行可见性
@@ -70,7 +78,8 @@ const UpdateUI = (() => {
       // 后台检查失败：徽章也不报错，保持中性
       if (badge && isBackgroundError) {
         badge.className = 'badge';
-        badge.textContent = '—';
+        badge.textContent = '';
+        badge.hidden = true;
       }
       return;
     }
@@ -260,6 +269,9 @@ const UpdateUI = (() => {
 
     if (cancelBtn) cancelBtn.addEventListener('click', doCancel);
 
+    // 更新渠道切换（正式版 / 测试版）
+    initChannelSegmented();
+
     // 更新源下拉
     indexSelectSource(customRow, customInput);
 
@@ -298,6 +310,55 @@ const UpdateUI = (() => {
 
     // 首次拉取状态
     window.api.updateStatus().then(renderStatus).catch(() => {});
+  }
+
+  /**
+   * 更新渠道分段控件。
+   * 正式版只取非 prerelease 的发布；测试版优先取 prerelease。
+   * 切换后立即重新检查一次，让用户马上看到结果差异。
+   *
+   * 滑块定位交给通用的 Segmented 模块（ui.js），
+   * 不要在这里自己算 --seg-x/--seg-w ——
+   * 两边 padding 基准不一致会导致滑块宽度为 0。
+   */
+  function initChannelSegmented() {
+    const el = $('seg-channel');
+    if (!el) return;
+
+    const items = [...el.querySelectorAll('.segmented-item')];
+
+    const applyValue = (val) => {
+      items.forEach(it => {
+        const on = it.dataset.value === val;
+        it.classList.toggle('active', on);
+        it.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      // 让 Segmented 重新定位滑块。
+      // 注意接口只有 init / reprojectAll（没有 refresh）。
+      // 重排可能受页面滚动影响，用 setTimeout 而非 rAF：
+      // 窗口隐藏时 rAF 会被冻结（CDP 截图场景尤其明显）。
+      setTimeout(() => {
+        if (window.Segmented && typeof window.Segmented.reprojectAll === 'function') {
+          window.Segmented.reprojectAll();
+        }
+      }, 30);
+    };
+
+    items.forEach(it => {
+      it.addEventListener('click', () => {
+        applyValue(it.dataset.value);
+        window.api.setSettings({ updateChannel: it.dataset.value }).then(() => {
+          Toast.info(it.dataset.value === 'beta' ? '已切换到测试版渠道' : '已切换到正式版渠道');
+          doCheck();
+        }).catch(() => {});
+      });
+    });
+
+    // 读取当前设置
+    window.api.getSettings().then((r) => {
+      const v = (r.data && r.data.updateChannel) || 'stable';
+      applyValue(v);
+    }).catch(() => {});
   }
 
   /**

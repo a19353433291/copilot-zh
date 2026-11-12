@@ -41,13 +41,24 @@ function setupUpdater(ctx) {
     const gt = parseRepo(settings.get('updateGiteeRepo'), DEFAULT_REPO);
 
     let source = settings.get('updateSource');
-    if (!['github', 'gitee', 'generic'].includes(source)) source = 'github';
-    // 选了自定义源但没填地址时，回退到 github，避免必然失败
+    if (!['github', 'gitee', 'generic'].includes(source)) source = 'github';    // 选了自定义源但没填地址时，回退到 github，避免必然失败
     const customUrl = String(settings.get('updateCustomUrl') || '').trim();
     if (source === 'generic' && !customUrl) source = 'github';
 
+    // source 已在上方校验过合法性
+
+    // 自动回退：国内直连 GitHub 经常超时，检查失败时自动换另一个源重试。
+    // 明确排除 generic（自定义源是用户特意指定的，不应被自动替换）。
+    const fallbackSources = [];
+    if (source === 'github' && gt.owner) fallbackSources.push('gitee');
+    if (source === 'gitee' && gh.owner) fallbackSources.push('github');
+
     return {
       source,
+      fallbackSources,
+      channel: ['stable', 'beta'].includes(settings.get('updateChannel'))
+        ? settings.get('updateChannel')
+        : 'stable',
       github: gh,
       gitee: gt,
       generic: { baseUrl: customUrl },

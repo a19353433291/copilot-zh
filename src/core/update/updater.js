@@ -17,6 +17,36 @@ const { spawn } = require('child_process');
 const { createSource, request } = require('./sources');
 
 /* ==========================================================================
+   超时工具
+   ========================================================================== */
+
+/** 检查更新的整体超时（毫秒）。
+ *  取 12 秒：国内直连 GitHub API 常常 8-10 秒才失败，
+ *  留出余量但不能让用户等太久。超时后自动尝试另一个源。 */
+const CHECK_TIMEOUT_MS = 12000;
+
+/**
+ * 给 Promise 套一个硬超时。
+ * 解决「UI 永远停在检查中」：底层网络请求可能长时间挂起，
+ * 必须有一个兜底让它必然以失败结束。
+ */
+function withTimeout(promise, ms, message) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(message || '操作超时'));
+    }, ms);
+
+    Promise.resolve(promise).then(
+      (v) => { if (!settled) { settled = true; clearTimeout(timer); resolve(v); } },
+      (e) => { if (!settled) { settled = true; clearTimeout(timer); reject(e); } }
+    );
+  });
+}
+
+/* ==========================================================================
    版本比较
    ========================================================================== */
 
@@ -213,22 +243,61 @@ class UpdateManager {
   /** 检查更新 */
   async check() {
     const sourceId = this.config.source || 'github';
-    const src = createSource(sourceId, this.config);
-    if (!src) {
-      this._setState('error', { error: '更新源未配置' });
-      return { ok: false, reason: '更新源未配置' };
+
+    // 依次尝试：首选源 → 备选源。
+    // 国内直连 GitHub 经常超时，自动回退到 Gitee 能显著提升成功率，
+    // 用户也不需要手动切换。
+    const order = [sourceId, ...(this.config.fallbackSources || [])]
+      .filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+    let lastReason = '未知错误';
+
+    for (let i = 0; i < order.length; i++) {
+      const sid = order[i];
+      const src = createSource(sid, this.config);
+      if (!src) continue;
+
+      const isFirst = i === 0;
+      this._setState('checking');
+      this.onLog(isFirst
+        ? `正在通过 ${src.displayName} 检查更新…`
+        : `首选源未成功，改用 ${src.displayName} 重试…`);
+
+      let result;
+      try {
+        result = await withTimeout(
+          src.fetchLatest((msg) => this.onLog(msg), this.config.channel || 'stable'),
+          CHECK_TIMEOUT_MS,
+          `${src.displayName} 检查超时（${CHECK_TIMEOUT_MS / 1000} 秒）`
+        );
+      } catch (e) {
+        lastReason = e.message;
+        this.onLog(`${src.displayName} 失败：${e.message}`);
+        // 还有下一个源就继续，否则把错误落到实处
+        if (i < order.length - 1) continue;
+        this._setState('error', { error: `${lastReason}。可尝试在设置中更换更新源。` });
+        return { ok: false, reason: `${lastReason}。可尝试在设置中更换更新源。` };
+      }
+
+      if (!result.ok) {
+        lastReason = result.reason;
+        this.onLog(`${src.displayName} 返回失败：${result.reason}`);
+        if (i < order.length - 1) continue;
+        this._setState('error', { error: result.reason });
+        return result;
+      }
+
+      // 成功：继续用常规逻辑处理
+      return this._applyResult(result);
     }
 
-    this._setState('checking');
-    this.onLog(`正在通过 ${src.displayName} 检查更新…`);
+    this._setState('error', { error: '没有可用的更新源' });
+    return { ok: false, reason: '没有可用的更新源' };
+  }
 
-    let result;
-    try {
-      result = await src.fetchLatest((msg) => this.onLog(msg));
-    } catch (e) {
-      this._setState('error', { error: e.message });
-      return { ok: false, reason: e.message };
-    }
+  /** 处理 fetchLatest 的成功结果（校验 URL、比较版本、更新状态） */
+  _applyResult(result) {
+    const sourceId = this.config.source || 'github';
 
     if (!result.ok) {
       this._setState('error', { error: result.reason });
