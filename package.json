@@ -1,6 +1,6 @@
 {
   "name": "copilot-zh",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Copilot 汉化助手 — GitHub Copilot 桌面版中文汉化工具（Windows）",
   "main": "electron/main.js",
   "author": "copilot-zh",
@@ -24,7 +24,16 @@
       "electron/**/*",
       "src/**/*",
       "package.json",
-      "bundled-packs/**/*"
+      "bundled-packs/**/*",
+      "build/icon.ico",
+      "build/icon.png",
+      "build/icon-16.png",
+      "build/icon-32.png",
+      "build/icon-64.png",
+      "build/icon-128.png",
+      "build/icon-256.png",
+      "build/tray-*.png",
+      "build/icon-tray*.png"
     ],
     "win": {
       "target": [

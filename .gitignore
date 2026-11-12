@@ -6,7 +6,11 @@ package-lock.json
 dist/
 dist-packs/
 bundled-packs/
-build/icon.png
+
+# 注意：build/ 下的图标文件（icon*.png / icon.ico / tray*.png）必须提交，
+# 它们是构建安装包与运行时窗口/托盘图标的必需资源。
+# 仅排除自动生成的临时预览图。
+build/_*.png
 
 # 签名密钥（绝不能提交！）
 build/pack-signing-key.pem

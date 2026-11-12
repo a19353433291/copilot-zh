@@ -84,8 +84,17 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     title: PRODUCT_NAME + ' — GitHub Copilot 汉化工具',
-    backgroundColor: '#0d1117',
+    backgroundColor: '#ffffff',
     show: false,
+    // 窗口图标（任务栏显示）
+    icon: (() => {
+      const fs2 = require('fs');
+      const png = path.join(__dirname, '..', 'build', 'icon.png');
+      const ico = path.join(__dirname, '..', 'build', 'icon.ico');
+      if (fs2.existsSync(png)) return png;
+      if (fs2.existsSync(ico)) return ico;
+      return undefined;
+    })(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -125,13 +134,55 @@ function notifyTray(text) {
   }
 }
 
-/** 创建系统托盘图标 */
+/**
+ * 创建系统托盘图标。
+ *
+ * 图标选择策略：
+ *   - 优先用 PNG：Electron 在 Windows 上对 PNG 托盘的缩放更准确，
+ *     ICO 有时会被系统按 32x32 渲染再缩小，导致模糊。
+ *   - 按 DPI 选尺寸：150% 缩放下托盘实际用 24px，200% 用 32px。
+ *   - 找不到 build 目录时回退到 ICO，再回退到无图标（不报错）。
+ */
 function createTray() {
-  const iconPath = path.join(__dirname, '..', 'build', 'icon.ico');
   const fs = require('fs');
-  if (!fs.existsSync(iconPath)) return;
+  const buildDir = path.join(__dirname, '..', 'build');
 
-  tray = new Tray(iconPath);
+  // 按当前屏幕缩放比例选择托盘图标尺寸
+  let scale = 1;
+  try {
+    const { screen } = require('electron');
+    scale = screen.getPrimaryDisplay().scaleFactor || 1;
+  } catch (e) { /* 忽略 */ }
+
+  // 目标显示尺寸：Windows 托盘基准 16px
+  const targetPx = Math.round(16 * scale);
+  const candidates = [
+    path.join(buildDir, `tray-${targetPx}.png`),
+    path.join(buildDir, 'icon-tray.png'),
+    path.join(buildDir, 'tray-32.png'),
+    path.join(buildDir, 'tray-16.png'),
+    path.join(buildDir, 'icon.ico'),
+  ];
+
+  let trayIcon = null;
+  for (const p of candidates) {
+    if (!fs.existsSync(p)) continue;
+    try {
+      trayIcon = p.endsWith('.ico') ? p : nativeImage.createFromPath(p);
+      if (trayIcon && trayIcon.isEmpty && trayIcon.isEmpty()) { trayIcon = null; continue; }
+      break;
+    } catch (e) {
+      trayIcon = null;
+    }
+  }
+
+  if (!trayIcon) return;
+
+  try {
+    tray = new Tray(trayIcon);
+  } catch (e) {
+    return;
+  }
   tray.setToolTip(PRODUCT_NAME);
 
   const buildMenu = () => Menu.buildFromTemplate([

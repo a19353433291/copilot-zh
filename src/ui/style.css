@@ -74,14 +74,11 @@ body {
   padding: 18px 16px 16px;
 }
 .logo {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  display: grid; place-items: center;
-  font-size: 15px; font-weight: 600;
-  letter-spacing: -.5px;
+  object-fit: contain;
   flex-shrink: 0;
+  display: block;
 }
 .brand-name { font-size: 13px; font-weight: 600; letter-spacing: -.1px; }
 .brand-ver { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
