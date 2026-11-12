@@ -125,10 +125,33 @@ function switchPage(page) {
   const pages = $('pages');
   if (pages) pages.scrollTop = 0;
 
+  // 切页后内容通常不满一屏，重置顶栏材质状态
+  updateTopbarMaterial();
+
   // 主题分段控件在页面可见后才好测量位置
   if (page === 'settings') {
     requestAnimationFrame(() => Segmented.reprojectAll());
   }
+}
+
+/**
+ * 顶栏材质：内容滚动后才启用背景模糊。
+ * 静态时顶栏与页面同色，不额外加一层模糊，避免无谓的合成开销。
+ */
+function updateTopbarMaterial() {
+  const pages = $('pages');
+  const topbar = document.querySelector('.topbar');
+  if (!pages || !topbar) return;
+  const scrolled = pages.scrollTop > 4;
+  topbar.classList.toggle('scrolled', scrolled);
+}
+
+function initTopbarMaterial() {
+  const pages = $('pages');
+  if (!pages) return;
+  // passive 监听，不阻塞滚动
+  pages.addEventListener('scroll', updateTopbarMaterial, { passive: true });
+  updateTopbarMaterial();
 }
 
 function initNav() {
@@ -254,6 +277,9 @@ async function init() {
   // 初始化汉化页的检测格与流程状态
   refreshChecks();
   resetFlow();
+
+  // 顶栏材质随滚动切换（玻璃设置在「增强」档才有可见差异）
+  initTopbarMaterial();
 
   switchPage('home');
 

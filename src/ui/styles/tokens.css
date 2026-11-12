@@ -82,8 +82,17 @@
   --content-max-w:  900px;
   --nav-item-h:     34px;
 
-  /* ---------- 玻璃强度 ---------- */
-  --glass-blur: 24px;
+  /* ---------- 玻璃强度 ----------
+     off    : 完全无模糊，纯实色（最省 GPU）
+     normal : 浮层轻微模糊（顶栏滚动 / 下拉 / Toast）
+     strong : 浮层明显模糊 + 侧边栏也参与模糊
+     数值直接参与 blur() 计算，三档必须产生可感知差异 */
+  --glass-blur: 16px;
+}
+
+/* 增强档：更大的模糊半径，侧边栏也启用 */
+:root[data-glass="strong"] {
+  --glass-blur: 30px;
 }
 
 /* 动画关闭 */
