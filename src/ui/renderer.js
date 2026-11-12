@@ -338,6 +338,11 @@ async function init() {
 
   // 交互反馈（按钮涟漪等）
   Feedback.initRipple();
+
+  // 自动更新 UI（订阅状态、绑定设置页控件）
+  if (window.UpdateUI) {
+    try { window.UpdateUI.init(); } catch (e) { console.error('更新 UI 初始化失败:', e); }
+  }
 }
 
 async function checkAdmin() {

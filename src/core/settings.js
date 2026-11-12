@@ -18,13 +18,30 @@ const path = require('path');
 const ENUMS = {
   theme: ['light', 'dark', 'system'],
   motion: ['on', 'off'],
+  updateSource: ['github', 'gitee', 'generic'],
+};
+
+/**
+ * 数值型设置的范围限制，防止非法值导致异常行为。
+ */
+const RANGES = {
+  updateCheckHours: { min: 0, max: 168 },     // 0 = 不检查，最大一周
+  watchIntervalMs: { min: 500, max: 60000 },
 };
 
 /** 校验某个键的值是否合法 */
 function isValidValue(key, value) {
   const allowed = ENUMS[key];
-  if (!allowed) return true;
-  return allowed.includes(value);
+  if (allowed) return allowed.includes(value);
+
+  const range = RANGES[key];
+  if (range) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return false;
+    return n >= range.min && n <= range.max;
+  }
+
+  return true;
 }
 
 const DEFAULTS = {
@@ -83,6 +100,29 @@ const DEFAULTS = {
    * off 时把过渡时长压到 1ms，保留状态切换但不做动画。
    */
   motion: 'on',
+
+  /* ---------- 自动更新 ---------- */
+
+  /**
+   * 更新源：github / gitee / generic
+   * 国内用户建议 gitee（速度快），海外用户建议 github。
+   */
+  updateSource: 'github',
+
+  /** 启动时自动检查更新（延迟 5 秒，不阻塞首屏） */
+  checkUpdateOnStart: true,
+
+  /** 后台定时检查间隔（小时），0 表示不检查 */
+  updateCheckHours: 6,
+
+  /** 自定义更新源地址（updateSource = generic 时生效） */
+  updateCustomUrl: '',
+
+  /** GitHub 源仓库 owner/repo */
+  updateGithubRepo: 'a19353433291/copilot-zh',
+
+  /** Gitee 源仓库 owner/repo */
+  updateGiteeRepo: 'a19353433291/copilot-zh',
 };
 
 class Settings {

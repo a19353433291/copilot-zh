@@ -33,6 +33,34 @@ contextBridge.exposeInMainWorld('api', {
   checkPackUpdate: () => ipcRenderer.invoke('pack:checkUpdate'),
   openPacksFolder: () => ipcRenderer.invoke('pack:openFolder'),
 
+  // 自动更新
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  updateCancel: () => ipcRenderer.invoke('update:cancel'),
+  updateSources: () => ipcRenderer.invoke('update:sources'),
+  onUpdateStatus: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('update:status', h);
+    return () => ipcRenderer.removeListener('update:status', h);
+  },
+  onUpdateLog: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('update:log', h);
+    return () => ipcRenderer.removeListener('update:log', h);
+  },
+  onUpdateAvailable: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('update:available', h);
+    return () => ipcRenderer.removeListener('update:available', h);
+  },
+  onUpdateReady: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on('update:ready', h);
+    return () => ipcRenderer.removeListener('update:ready', h);
+  },
+
   // 通用
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   relaunch: () => ipcRenderer.invoke('app:relaunch'),

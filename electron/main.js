@@ -18,6 +18,7 @@ const autostart = require('../src/core/autostart');
 const { createEngines, supportedPlatforms } = require('../src/core/platform/engine');
 const { registerWin32 } = require('../src/core/platform/win32');
 const cdpWin = require('../src/core/platform/win32/runtimeInject');
+const { setupUpdater } = require('./updater-ipc');
 
 // 注册当前平台实现（跨平台扩展点）
 if (process.platform === 'win32') registerWin32();
@@ -26,6 +27,7 @@ let mainWindow = null;
 let tray = null;
 let settings = null;
 let watcher = null;
+let updater = null;
 let isQuitting = false;
 
 // 产品显示名（安装包、窗口标题用）
@@ -445,6 +447,23 @@ app.whenReady().then(async () => {
   createTray();
   initWatcher();
 
+  // 自动更新：初始化管理器并安排启动检查与定时检查
+  try {
+    updater = setupUpdater({
+      app,
+      settings,
+      send: (channel, data) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(channel, data);
+        }
+      },
+      notifyTray: (text) => notifyTray(text),
+    });
+    updater.onAppReady();
+  } catch (e) {
+    console.error('更新模块初始化失败:', e.message);
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -453,6 +472,9 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   isQuitting = true;
   if (watcher) watcher.stop();
+  if (updater) {
+    try { updater.dispose(); } catch (e) { /* ignore */ }
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -514,6 +536,11 @@ ipcMain.handle('settings:set', async (_e, patch) => {
   // 主题变化：同步 Windows 原生标题栏与窗口背景色
   if (r.changed.includes('theme')) {
     applyNativeTheme(settings.get('theme'));
+  }
+
+  // 更新相关设置变化：重建源配置 / 重排定时检查
+  if (updater) {
+    try { updater.onSettingsChanged(r.changed); } catch (e) { /* ignore */ }
   }
 
   return { ok: true, changed: r.changed, data: settings.getAll() };
@@ -780,6 +807,40 @@ ipcMain.handle('pack:checkUpdate', async () => {
 
 ipcMain.handle('pack:openFolder', async () => {
   shell.openPath(PACKS_DIR);
+});
+
+// ---------------------------------------------------------------------------
+// IPC：自动更新
+// ---------------------------------------------------------------------------
+
+ipcMain.handle('update:status', async () => {
+  if (!updater) return { state: 'idle', currentVersion: app.getVersion(), sourceId: 'github' };
+  return updater.getStatus();
+});
+
+ipcMain.handle('update:check', async () => {
+  if (!updater) return { ok: false, reason: '更新模块未初始化' };
+  return updater.check();
+});
+
+ipcMain.handle('update:download', async () => {
+  if (!updater) return { ok: false, reason: '更新模块未初始化' };
+  return updater.download();
+});
+
+ipcMain.handle('update:install', async () => {
+  if (!updater) return { ok: false, reason: '更新模块未初始化' };
+  return updater.install();
+});
+
+ipcMain.handle('update:cancel', async () => {
+  if (!updater) return { ok: false, reason: '更新模块未初始化' };
+  return updater.cancel();
+});
+
+ipcMain.handle('update:sources', async () => {
+  if (!updater) return [];
+  return updater.listSources();
 });
 
 // ---------------------------------------------------------------------------

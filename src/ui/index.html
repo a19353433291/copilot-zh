@@ -749,6 +749,99 @@
             </div>
           </div>
 
+          <!-- 软件更新 -->
+          <div>
+            <div class="group-label">
+              <span>软件更新</span>
+              <span class="badge" id="update-badge">—</span>
+            </div>
+            <div class="group">
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">当前版本</div>
+                  <div class="row-desc" id="update-current">—</div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn btn-sm" id="btn-update-check">检查更新</button>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">更新源</div>
+                  <div class="row-desc">国内网络建议用 Gitee，海外建议 GitHub</div>
+                </div>
+                <div class="select" id="sel-update-source">
+                  <button class="select-trigger" data-value="github">
+                    <span class="select-label">GitHub</span>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="select-menu" hidden>
+                    <button class="select-option active" data-value="github">GitHub</button>
+                    <button class="select-option" data-value="gitee">Gitee（国内更快）</button>
+                    <button class="select-option" data-value="generic">自定义源</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row" id="row-update-custom" hidden>
+                <div class="row-main">
+                  <div class="row-title">自定义源地址</div>
+                  <div class="row-desc">该地址下需提供 latest.yml 与安装包</div>
+                </div>
+                <input class="text-input" id="input-update-url" type="text" placeholder="https://example.com/releases" spellcheck="false">
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">启动时检查更新</div>
+                  <div class="row-desc">启动后 5 秒静默检查，不阻塞界面</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-check-on-start">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">后台定时检查</div>
+                  <div class="row-desc">运行中定期检查新版本，0 表示不检查</div>
+                </div>
+                <div class="select" id="sel-update-hours">
+                  <button class="select-trigger" data-value="6">
+                    <span class="select-label">每 6 小时</span>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="select-menu" hidden>
+                    <button class="select-option" data-value="0">不检查</button>
+                    <button class="select-option" data-value="1">每 1 小时</button>
+                    <button class="select-option active" data-value="6">每 6 小时</button>
+                    <button class="select-option" data-value="24">每 24 小时</button>
+                    <button class="select-option" data-value="168">每 7 天</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 更新进行中 / 有可用版本时显示 -->
+              <div class="row update-progress-row" id="row-update-progress" hidden>
+                <div class="row-main">
+                  <div class="row-title" id="update-progress-title">正在检查…</div>
+                  <div class="row-desc" id="update-progress-desc"></div>
+                  <div class="progress update-progress" id="update-progress-wrap" hidden>
+                    <div class="progress-track"><div class="progress-fill" id="update-progress-fill"></div></div>
+                  </div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn btn-sm" id="btn-update-action" hidden>下载</button>
+                  <button class="btn btn-sm btn-ghost" id="btn-update-cancel" hidden>取消</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           <!-- 系统集成 -->
           <div>
             <div class="group-label">
@@ -832,6 +925,7 @@
 
 <script src="theme.js"></script>
 <script src="ui.js"></script>
+<script src="update-ui.js"></script>
 <script src="renderer.js"></script>
 </body>
 </html>
