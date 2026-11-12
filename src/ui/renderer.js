@@ -155,24 +155,41 @@ function initSelect(wrapId, onChange) {
   const label = wrap.querySelector('.select-label');
   if (!trigger || !menu) return null;
 
+  // 打开下拉时提升祖先卡片的层叠顺序，
+  // 因为 .card 的 backdrop-filter 会创建堆叠上下文，菜单否则会被后面的卡片遮住
+  const raiseAncestors = (raise) => {
+    let el = wrap.parentElement;
+    while (el && el !== document.body) {
+      if (el.classList && (el.classList.contains('card') || el.classList.contains('row'))) {
+        el.classList.toggle('stack-raised', raise);
+      }
+      el = el.parentElement;
+    }
+  };
+
   const close = () => {
     menu.hidden = true;
     trigger.classList.remove('open');
     trigger.setAttribute('aria-expanded', 'false');
+    raiseAncestors(false);
   };
 
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
     const willOpen = menu.hidden;
+    // 先关闭其它下拉（会连带清理它们的 stack-raised）
     document.querySelectorAll('.select-menu').forEach(m => { m.hidden = true; });
     document.querySelectorAll('.select-trigger').forEach(t => {
       t.classList.remove('open');
       t.setAttribute('aria-expanded', 'false');
     });
+    document.querySelectorAll('.stack-raised').forEach(el => el.classList.remove('stack-raised'));
+
     if (willOpen) {
       menu.hidden = false;
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
+      raiseAncestors(true);
     }
   });
 

@@ -381,6 +381,24 @@
   flex-shrink: 0;
 }
 
+/* --------------------------------------------------------------------------
+   下拉被遮挡的修复
+   --------------------------------------------------------------------------
+   .card 使用 backdrop-filter，它会创建新的堆叠上下文。
+   于是 .select-menu 的 z-index 只在卡片内部生效，无法盖住后面的兄弟卡片，
+   表现为「下拉菜单被下一张卡片遮住」。
+   关闭玻璃后 backdrop-filter 变为 none，卡片不再创建上下文，所以看起来正常。
+
+   修复：下拉打开时给最近的祖先卡片加 .stack-raised，
+   让整张卡片浮到兄弟之上，菜单即可完整显示。
+   -------------------------------------------------------------------------- */
+.card.stack-raised,
+.row.stack-raised,
+.stack-raised {
+  position: relative;
+  z-index: var(--z-dropdown);
+}
+
 .select-trigger {
   display: flex;
   align-items: center;

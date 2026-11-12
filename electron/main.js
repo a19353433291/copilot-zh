@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -77,14 +77,53 @@ function bootstrapBundledPack() {
   return { installed: false, reason: 'bundled-pack-not-found' };
 }
 
+/**
+ * 让 Windows 原生标题栏跟随应用主题。
+ *
+ * 背景：原生标题栏由系统绘制，CSS 无法控制。
+ *   Electron 的 nativeTheme.themeSource 会告诉系统用浅色还是深色渲染
+ *   窗口边框、标题栏、系统菜单。
+ *
+ * 映射：
+ *   theme = light   → nativeTheme.themeSource = 'light'
+ *   theme = dark    → nativeTheme.themeSource = 'dark'
+ *   theme = system  → nativeTheme.themeSource = 'system'（跟随 Windows）
+ *
+ * @param {string} theme
+ */
+function applyNativeTheme(theme) {
+  const map = { light: 'light', dark: 'dark', system: 'system' };
+  const source = map[theme] || 'system';
+  try {
+    nativeTheme.themeSource = source;
+  } catch (e) { /* 忽略，不影响功能 */ }
+
+  // 同步窗口背景色，避免加载瞬间闪白/闪黑
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const dark = source === 'dark' ||
+      (source === 'system' && nativeTheme.shouldUseDarkColors);
+    try {
+      mainWindow.setBackgroundColor(dark ? '#101522' : '#F4F6FB');
+    } catch (e) { /* ignore */ }
+  }
+}
+
 function createWindow() {
+  // 创建窗口前先设定主题，确保标题栏从一开始就是正确的颜色
+  const initialTheme = settings ? settings.get('theme') : 'system';
+  applyNativeTheme(initialTheme);
+
+  const useDark = initialTheme === 'dark' ||
+    (initialTheme === 'system' && nativeTheme.shouldUseDarkColors);
+
   mainWindow = new BrowserWindow({
     width: 1040,
     height: 760,
     minWidth: 900,
     minHeight: 620,
     title: PRODUCT_NAME + ' — GitHub Copilot 汉化工具',
-    backgroundColor: '#ffffff',
+    // 背景色随主题：深色用 #101522，浅色用 #F4F6FB
+    backgroundColor: useDark ? '#101522' : '#F4F6FB',
     show: false,
     // 窗口图标（任务栏显示）
     icon: (() => {
@@ -442,6 +481,11 @@ ipcMain.handle('settings:set', async (_e, patch) => {
     if (settings.get('autoInjectOnStart')) {
       if (!watcher.running) watcher.start();
     }
+  }
+
+  // 主题变化：同步 Windows 原生标题栏与窗口背景色
+  if (r.changed.includes('theme')) {
+    applyNativeTheme(settings.get('theme'));
   }
 
   return { ok: true, changed: r.changed, data: settings.getAll() };
