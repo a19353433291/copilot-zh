@@ -14,10 +14,22 @@
 ;   2. 用户数据目录（%APPDATA%\copilot-zh）被 Electron 的多进程占用，
 ;      DIPS / Cache / Local Storage 等文件句柄未释放 → EBUSY
 ;   3. 程序可能最小化在托盘，用户误以为已退出
-; 这里不询问、直接终止，最多等 15 秒确保进程与句柄都释放。
+;
+; 唤醒策略（三层，逐级加强）：
+;   第一层  CopilotHan.exe --force-quit
+;            程序收到这个参数会跳过「最小化到托盘」直接 exit(0)。
+;            对已在运行的实例，会通过 second-instance 事件转达。
+;   第二层  taskkill /T /F（不带 /F 的 WM_CLOSE 会被托盘逻辑拦截）
+;   第三层  轮询确认，仍未退出则再补一次 taskkill
+; 最多等 15 秒，确保进程与句柄都释放。
 ; ---------------------------------------------------------------------------
 !macro customUnInit
-  ; 先杀掉 Copilot 侧的相关进程不算本工具职责，只处理自己
+  ; 第一层：礼貌地请程序自己退出（走 forceQuit 通道，不经托盘）
+  nsExec::Exec '"$INSTDIR\CopilotHan.exe" --force-quit'
+  Pop $1
+  Sleep 1200
+
+  ; 第二层：强制结束所有残留进程
   nsExec::Exec 'taskkill /IM "CopilotHan.exe" /T /F'
   Pop $1
 
@@ -33,6 +45,14 @@
     ${If} $1 != 0
       ${ExitDo}
     ${EndIf}
+
+    ; 第 5 秒、第 10 秒各再补一次强制结束
+    ${If} $0 == 5
+    ${OrIf} $0 == 10
+      nsExec::Exec 'taskkill /IM "CopilotHan.exe" /T /F'
+      Pop $1
+    ${EndIf}
+
     ${If} $0 >= 15
       ${ExitDo}
     ${EndIf}

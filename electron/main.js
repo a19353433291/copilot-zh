@@ -435,7 +435,83 @@ function initWatcher() {
   watcher.start();
 }
 
+/* --------------------------------------------------------------------------
+   单实例锁
+   --------------------------------------------------------------------------
+   本程序常驻托盘，用户极易在「以为已退出」的情况下重复启动。
+   没有这把锁会出三个问题：
+     1. 出现两个托盘图标，分不清哪个在监控
+     2. 两个实例同时向 Copilot 注入，翻译重复执行
+     3. 共用同一个 userData 目录，Chromium 缓存/本地存储互相冲突
+        （实测会报「Unable to move the cache: 拒绝访问」）
+   第二个实例启动时不创建窗口，而是把已有窗口唤到前台后立即退出。
+   -------------------------------------------------------------------------- */
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  // 已有实例在运行：本进程什么都不做，直接退出
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    // 卸载器/更新器用 --force-quit 唤起时，令当前实例退出
+    if (Array.isArray(argv) && argv.includes('--force-quit')) {
+      forceQuit();
+      return;
+    }
+
+    // 用户又启动了一次：把已有窗口显示出来并聚焦
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    } else {
+      // 窗口可能已被销毁（例如托盘模式下 hide 之外的情况），重建一个
+      createWindow();
+    }
+  });
+}
+
+/* --------------------------------------------------------------------------
+   卸载/更新时的强制退出通道
+   --------------------------------------------------------------------------
+   问题：本程序常驻托盘，close 事件被 minimizeToTray 拦截为 hide，
+   卸载器调 taskkill /T /F 时，Windows 会先发 WM_CLOSE，
+   被拦截后进程不会退出，卸载流程卡住、文件删不掉。
+
+   解法：让卸载器用一个明确的信号通知我们「这次是真的要退」。
+   通过命令行参数 --force-quit 启动的场景（或 IPC app:quit）直接退出，
+   不走托盘隐藏逻辑。
+
+   同时监听 SIGTERM/SIGINT，覆盖 taskkill 走信号通道的情况。
+   -------------------------------------------------------------------------- */
+const FORCE_QUIT_ARG = process.argv.includes('--force-quit');
+
+/** 真正退出应用（跳过托盘拦截） */
+function forceQuit() {
+  isQuitting = true;
+  try { if (watcher) watcher.stop(); } catch (e) {}
+  try { if (updater) updater.dispose(); } catch (e) {}
+  try { if (tray) { tray.destroy(); tray = null; } } catch (e) {}
+  app.exit(0);          // exit 不走 before-quit，最彻底
+}
+
+if (process.platform === 'win32') {
+  // 收到 SIGTERM/SIGINT 时立即退出，不等托盘逻辑
+  process.on('SIGTERM', forceQuit);
+  process.on('SIGINT', forceQuit);
+}
+
 app.whenReady().then(async () => {
+  // 没拿到锁就不该走到这里（上面的 app.quit 已处理）
+  if (!gotSingleInstanceLock) return;
+
+  // 带 --force-quit 启动时：通知已有实例退出，然后自己立刻退出。
+  // 这样卸载器只需要执行一次 `CopilotHan.exe --force-quit` 就能收掉程序。
+  if (FORCE_QUIT_ARG) {
+    forceQuit();
+    return;
+  }
+
   ensureDirs();
   bootstrapBundledPack();
 
