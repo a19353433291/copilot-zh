@@ -493,6 +493,13 @@
   transform-origin: top right;
 }
 
+/* 空间不足时向上展开（由 renderer 的 positionMenu 添加该类） */
+.select-menu.drop-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+  transform-origin: bottom right;
+}
+
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .select-menu {
     background: color-mix(in srgb, var(--surface) 88%, transparent);

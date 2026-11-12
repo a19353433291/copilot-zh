@@ -109,24 +109,34 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check('面板有圆角', parseFloat(pn.radius) >= 10, pn.radius);
   check('面板有阴影', pn.shadow, '');
 
-  // 3. 拖拽区存在且不遮挡按钮
+  // 3. 标题栏：承载品牌信息 + 主题按钮，且不遮挡原生控制按钮
   const drag = await ev(`(() => {
-    const d = document.querySelector('.titlebar-drag');
-    if (!d) return JSON.stringify({ exists: false });
-    const cs = getComputedStyle(d);
-    const r = d.getBoundingClientRect();
+    const t = document.querySelector('.titlebar');
+    if (!t) return JSON.stringify({ exists: false });
+    const cs = getComputedStyle(t);
+    const r = t.getBoundingClientRect();
+    const btn = document.getElementById('btn-theme-quick');
+    const btnR = btn ? btn.getBoundingClientRect() : null;
     return JSON.stringify({
       exists: true,
       height: Math.round(r.height),
-      right: Math.round(window.innerWidth - r.right),
-      appRegion: cs.webkitAppRegion || cs.getPropertyValue('-webkit-app-region'),
-      pointerEvents: cs.pointerEvents
+      top: Math.round(r.top),
+      appRegion: cs.getPropertyValue('-webkit-app-region'),
+      hasName: !!document.querySelector('.titlebar-name'),
+      hasVersion: !!document.getElementById('brand-version'),
+      hasThemeBtn: !!btn,
+      // 主题按钮右边缘距窗口右边应 > 130px（避开原生控制按钮）
+      btnGapFromRight: btnR ? Math.round(window.innerWidth - btnR.right) : -1
     });
   })()`);
   const dg = JSON.parse(drag);
-  check('拖拽区存在', dg.exists, '');
-  check('拖拽区右侧留出按钮空间', dg.right >= 100, `留 ${dg.right}px`);
-  check('拖拽区不拦截点击', dg.pointerEvents === 'none', dg.pointerEvents);
+  check('标题栏存在', dg.exists, '');
+  check('标题栏在窗口最顶部', dg.top === 0, `top=${dg.top}px`);
+  check('标题栏可拖拽窗口', dg.appRegion === 'drag', dg.appRegion);
+  check('标题栏含品牌名', dg.hasName, '');
+  check('标题栏含版本号', dg.hasVersion, '');
+  check('标题栏含主题按钮', dg.hasThemeBtn, '');
+  check('主题按钮避开原生控制按钮', dg.btnGapFromRight >= 130, `距右 ${dg.btnGapFromRight}px`);
 
   // 4. 页面底部不受影响
   const bottom = await ev(`(() => {

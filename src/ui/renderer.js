@@ -137,22 +137,46 @@ function switchPage(page) {
 /**
  * 顶栏材质：内容滚动后才启用背景模糊。
  * 静态时顶栏与页面同色，不额外加一层模糊，避免无谓的合成开销。
+ *
+ * 实现说明：
+ * 1. 监听 #pages 的 scroll 事件（用户真实滚动的主要路径）
+ * 2. 用 setInterval 兜底（不用 rAF —— 页面不可见时 rAF 会被浏览器暂停，
+ *    导致状态不同步；setInterval 在隐藏页面仍会执行）
+ * 3. 只在 class 真正变化时才操作 DOM，开销可忽略
  */
 function updateTopbarMaterial() {
   const pages = $('pages');
   const topbar = document.querySelector('.topbar');
   if (!pages || !topbar) return;
   const scrolled = pages.scrollTop > 4;
-  topbar.classList.toggle('scrolled', scrolled);
+  if (topbar.classList.contains('scrolled') !== scrolled) {
+    topbar.classList.toggle('scrolled', scrolled);
+  }
 }
 
+let _materialTimer = 0;
 function initTopbarMaterial() {
   const pages = $('pages');
   if (!pages) return;
-  // passive 监听，不阻塞滚动
+
   pages.addEventListener('scroll', updateTopbarMaterial, { passive: true });
+
+  // 兜底轮询：250ms 一次，只在状态变化时触碰 DOM
+  if (!_materialTimer) {
+    _materialTimer = setInterval(updateTopbarMaterial, 250);
+  }
+
   updateTopbarMaterial();
 }
+
+/** 清理兜底轮询（页面卸载时调用，避免定时器泄漏） */
+function teardownTopbarMaterial() {
+  if (_materialTimer) {
+    clearInterval(_materialTimer);
+    _materialTimer = 0;
+  }
+}
+window.addEventListener('beforeunload', teardownTopbarMaterial);
 
 function initNav() {
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -196,6 +220,26 @@ function initSelect(wrapId, onChange) {
     }
   };
 
+  /**
+   * 根据菜单可用空间决定向上还是向下展开。
+   * 页面底部附近的控件向下展开会超出可视区域，
+   * 被 .pages 的 overflow 或状态栏裁切。
+   */
+  const positionMenu = () => {
+    menu.classList.remove('drop-up');
+    // 先让它可测量
+    menu.hidden = false;
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuH = menu.offsetHeight || 160;
+    const viewportH = window.innerHeight;
+    // 预留底部状态栏 + 安全边距
+    const spaceBelow = viewportH - triggerRect.bottom - 40;
+    if (spaceBelow < menuH && triggerRect.top > menuH) {
+      menu.classList.add('drop-up');
+    }
+    menu.hidden = true;
+  };
+
   const close = () => {
     menu.hidden = true;
     trigger.classList.remove('open');
@@ -215,6 +259,7 @@ function initSelect(wrapId, onChange) {
     document.querySelectorAll('.stack-raised').forEach(el => el.classList.remove('stack-raised'));
 
     if (willOpen) {
+      positionMenu();              // 先判断展开方向
       menu.hidden = false;
       trigger.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
@@ -338,7 +383,45 @@ async function initThemeUI() {
   ThemeController.watchSystem();
   window.addEventListener('theme:change', () => {
     requestAnimationFrame(() => Segmented.reprojectAll());
+    updateThemeQuickIcon();
   });
+
+  // 标题栏的主题快速切换：亮色 → 深色 → 跟随系统 循环
+  const quickBtn = $('btn-theme-quick');
+  if (quickBtn) {
+    quickBtn.addEventListener('click', () => {
+      const order = ['light', 'dark', 'system'];
+      const cur = ThemeController.get().theme;
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      ThemeController.set({ theme: next });
+      patchSettings({ theme: next });
+      if (themeSegmented) themeSegmented.set(next);
+      Toast.info(THEME_LABELS[next] || next);
+    });
+  }
+
+  updateThemeQuickIcon();
+}
+
+const THEME_LABELS = { light: '浅色模式', dark: '深色模式', system: '跟随系统' };
+
+const THEME_ICONS = {
+  light: `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`,
+  dark: `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`,
+  system: `<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>`,
+};
+
+/** 让标题栏主题按钮的图标反映当前模式 */
+function updateThemeQuickIcon() {
+  const btn = $('btn-theme-quick');
+  if (!btn) return;
+  const cur = ThemeController.get().theme || 'system';
+  const svg = btn.querySelector('svg');
+  if (svg) {
+    svg.innerHTML = THEME_ICONS[cur] || THEME_ICONS.system;
+  }
+  btn.setAttribute('data-tip', THEME_LABELS[cur] || '切换主题');
+  btn.setAttribute('aria-label', THEME_LABELS[cur] || '切换主题');
 }
 
 // ---------------------------------------------------------------------------

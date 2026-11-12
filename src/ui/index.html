@@ -20,21 +20,30 @@
 <!-- 背景光晕层 -->
 <div class="app-bg" aria-hidden="true"></div>
 
-<!-- 窗口拖拽区：覆盖顶部一条，右侧留出原生控制按钮 -->
-<div class="titlebar-drag" aria-hidden="true"></div>
 
 <div class="app">
 
-  <!-- ==================== 侧边栏 ==================== -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <img class="brand-logo" src="../../build/icon-64.png" alt="Copilot 汉化助手" width="32" height="32">
-      <div class="brand-meta">
-        <div class="brand-name">Copilot 汉化助手</div>
-        <div class="brand-ver" id="brand-version">—</div>
-      </div>
+  <!-- ==================== 标题栏（与 Windows 控制按钮同层） ==================== -->
+  <header class="titlebar">
+    <div class="titlebar-left">
+      <img class="titlebar-logo" src="../../build/icon-64.png" alt="" width="18" height="18">
+      <span class="titlebar-name">Copilot 汉化助手</span>
+      <span class="titlebar-ver" id="brand-version">—</span>
     </div>
 
+    <div class="titlebar-right">
+      <!-- 主题快速切换：单按钮循环 亮 → 暗 → 跟随系统 -->
+      <button class="titlebar-btn" id="btn-theme-quick" data-tip="切换主题" aria-label="切换主题">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== 侧边栏 ==================== -->
+  <aside class="sidebar">
     <nav class="nav" id="nav" role="tablist" aria-label="主导航">
       <button class="nav-item active" data-page="home" role="tab" aria-selected="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -80,7 +89,7 @@
   <!-- ==================== 主区域 ==================== -->
   <div class="content-area">
 
-    <!-- 顶栏 -->
+    <!-- 面板内的页面标题条 -->
     <header class="topbar">
       <div class="topbar-left">
         <span class="page-title" id="page-title">概览</span>

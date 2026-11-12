@@ -99,43 +99,57 @@ class WS {
   await ev(`document.documentElement.dataset.glass = 'strong'`);
   await new Promise(r => setTimeout(r, 200));
 
-  // 切到设置页并展开所有折叠项，制造足够长的可滚动内容
-  await ev(`document.querySelector('.nav-item[data-page="settings"]').click()`);
-  await new Promise(r => setTimeout(r, 400));
-  await ev(`document.querySelectorAll('.disclosure').forEach(d => d.open = true)`);
-  await new Promise(r => setTimeout(r, 300));
-
-  const scrollable = await ev(`(() => {
-    const p = document.getElementById('pages');
-    return p.scrollHeight > p.clientHeight + 10;
-  })()`);
-
+  // 直接验证逻辑本身：模拟内容滚动后调用 updateTopbarMaterial。
+  // 不依赖「某个页面刚好内容超出一屏」这种脆弱前提。
   const before = JSON.parse(await probe());
   console.log(`  滚动前 scrolled=${before.topbarScrolled}  blur=${before.topbarBlur}`);
 
-  if (scrollable) {
-    await ev(`document.getElementById('pages').scrollTop = 300`);
-    await new Promise(r => setTimeout(r, 500));
-  } else {
-    console.log('  （内容不足一屏，强制触发一次滚动事件来验证逻辑）');
-    await ev(`(() => {
-      const p = document.getElementById('pages');
-      p.scrollTop = 100;
-      p.dispatchEvent(new Event('scroll'));
-    })()`);
-    await new Promise(r => setTimeout(r, 400));
-  }
+  // 临时注入一段撑高内容，制造真实可滚动场景。
+  // 注意：必须等布局完成后再设置 scrollTop，否则会读到 0（竞态）。
+  await ev(`(() => {
+    const p = document.getElementById('pages');
+    const filler = document.createElement('div');
+    filler.id = '__scroll_filler';
+    filler.style.height = '800px';
+    p.appendChild(filler);
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
 
+  // 设置滚动位置，并轮询确认真的滚下去了
+  const scrolled = await ev(`(async () => {
+    const p = document.getElementById('pages');
+    p.scrollTop = 400;
+    // 轮询等待 scrollTop 生效（最多 1.5 秒）
+    for (let i = 0; i < 15; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      if (p.scrollTop > 0) break;
+    }
+    return p.scrollTop;
+  })()`);
+
+  await new Promise(r => setTimeout(r, 400));
   const after = JSON.parse(await probe());
-  console.log(`  滚动后 scrolled=${after.topbarScrolled}  blur=${after.topbarBlur}`);
+  const canScroll = await ev(`(() => {
+    const p = document.getElementById('pages');
+    return p.scrollHeight > p.clientHeight + 10;
+  })()`);
+  console.log(`  注入后 scrollTop=${scrolled}  可滚动=${canScroll}  scrolled=${after.topbarScrolled}  blur=${after.topbarBlur}`);
+
+  // 清理注入内容
+  await ev(`(() => {
+    const f = document.getElementById('__scroll_filler');
+    if (f) f.remove();
+    const p = document.getElementById('pages');
+    p.scrollTop = 0;
+    p.dispatchEvent(new Event('scroll'));
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
 
   const ok1 = after.topbarScrolled === true;
   console.log(`\n  ${ok1 ? '✓' : '✗'} 顶栏在滚动时启用材质`);
 
   // 复原
   await ev(`document.documentElement.dataset.glass = 'normal'`);
-  await ev(`document.getElementById('pages').scrollTop = 0`);
-  await ev(`document.querySelectorAll('.disclosure').forEach(d => d.open = false)`);
   await ev(`document.querySelector('.nav-item[data-page="home"]').click()`);
 
   ws.close();

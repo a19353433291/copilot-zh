@@ -126,7 +126,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const narrow = await ev(`(() => {
     const sb = document.querySelector('.sidebar');
     const label = document.querySelector('.nav-item span');
-    const brand = document.querySelector('.brand-meta');
+    const brand = document.querySelector('.titlebar-name');
     return JSON.stringify({
       sidebarW: Math.round(sb.getBoundingClientRect().width),
       labelHidden: label ? getComputedStyle(label).display === 'none' : false,
@@ -137,7 +137,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try { n = JSON.parse(narrow); } catch (e) {}
   check('侧边栏折叠到 68px', n.sidebarW <= 70, true);
   check('导航文字隐藏', n.labelHidden, true);
-  check('品牌文字隐藏', n.brandHidden, true);
+  check('标题栏品牌名隐藏', n.brandHidden, true);
 
   // ---------- 3. 动画关闭 ----------
   console.log('\n=== 3. 动画关闭 ===');

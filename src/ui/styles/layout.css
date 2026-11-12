@@ -20,23 +20,103 @@
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100vh;
   background: var(--app-bg);
-  /* 整个窗口顶部留出原生控制按钮的高度 */
+  /* 顶部留出标题栏高度；标题栏本身是 fixed 定位，覆盖在这条空白上 */
   padding-top: var(--titlebar-h);
   position: relative;
 }
 
-/* 顶部拖拽区：覆盖窗口最上方一条，让用户能拖动窗口。
-   右侧留出原生控制按钮的位置，不遮挡点击。 */
-.titlebar-drag {
+/* ==========================================================================
+   Titlebar — 顶部窗口控制栏（与 Windows 原生按钮同层）
+   --------------------------------------------------------------------------
+   这块区域原来只是 40px 空白占位，右边靠 titleBarOverlay 浮着系统按钮。
+   现在把「品牌信息 + 主题切换」放进来，让这条横条承载实际功能，
+   同时左侧的拖拽区仍能拖动窗口。
+   ========================================================================== */
+
+.titlebar {
   position: fixed;
   top: 0;
   left: 0;
-  right: 140px;
+  right: 0;
   height: var(--titlebar-h);
-  z-index: 5;
+  /* 必须高于侧边栏（--z-sticky: 10）：
+     侧边栏用负 margin 延伸到了窗口顶部，若两者同级，
+     DOM 中靠后的侧边栏会盖住标题栏的内容。 */
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  /* 右侧留出原生控制按钮的宽度（Windows 约 138px） */
+  padding: 0 calc(140px + var(--space-3)) 0 var(--space-4);
+  background: var(--sidebar-bg);
   -webkit-app-region: drag;
-  pointer-events: none;                /* 不拦截点击，只提供拖拽 */
+  user-select: none;
+  transition: background-color var(--dur-normal) var(--ease-standard);
 }
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.titlebar-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.titlebar-name {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-ver {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+/* 标题栏内的小图标按钮 */
+.titlebar-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.titlebar-btn svg { width: 15px; height: 15px; }
+.titlebar-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.titlebar-btn:active { background: var(--surface-active); }
 
 /* ---------- 侧边栏 ----------
    从窗口最顶端开始，与原生控制按钮同处一条水平线。
@@ -50,7 +130,9 @@
   transition: background-color var(--dur-normal) var(--ease-standard);
   position: relative;
   z-index: var(--z-sticky);
-  /* 抵消 .app 的 padding-top，让侧边栏顶到窗口最上沿 */
+  /* 侧边栏顶到窗口最上沿：抵消 .app 的 padding-top。
+     标题栏 z-index 更高，会覆盖这段区域，
+     所以侧边栏需要把内容往下推，避免导航项被标题栏压住。 */
   margin-top: calc(-1 * var(--titlebar-h));
   padding-top: var(--titlebar-h);
 }
@@ -81,41 +163,8 @@
   -webkit-backdrop-filter: none;
 }
 
-/* 品牌区：紧凑，不做视觉焦点 */
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 16px 14px;
-  -webkit-app-region: drag;
-}
-
-.brand-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.brand-meta { min-width: 0; }
-
-.brand-name {
-  font-family: var(--font-display);
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
-  letter-spacing: -0.005em;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.brand-ver {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
-}
+/* 品牌信息已移到标题栏，侧边栏从导航直接开始。
+   顶部留一点内边距，让首个导航项不贴边。 */
 
 /* 导航：macOS 侧栏列表风格 */
 .nav {
@@ -302,7 +351,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--page-padding-y) var(--page-padding-x) var(--space-9);
-  scroll-behavior: smooth;
+  /* 不用 scroll-behavior: smooth：
+     切换页面时我们直接重置 scrollTop，平滑滚动会让重置有延迟，
+     而且下拉菜单的可见性判断依赖即时滚动位置。 */
+  overscroll-behavior: contain;
 }
 
 .page-inner {
@@ -354,11 +406,10 @@
     --sidebar-w: 64px;
     --page-padding-x: 20px;
   }
-  .brand-meta,
   .nav-item span,
   .sidebar-status span:not(.status-dot) { display: none; }
+  .titlebar-name { display: none; }
   .nav-item { justify-content: center; padding: 0; }
-  .sidebar-brand { justify-content: center; padding-inline: 0; }
   .sidebar-foot { display: flex; justify-content: center; }
   .nav-item.active::before { display: none; }
   .statusbar-path { max-width: 38vw; }
