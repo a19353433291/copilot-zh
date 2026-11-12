@@ -77,9 +77,13 @@
   --sidebar-w:      220px;
   --topbar-h:       52px;
   --statusbar-h:    28px;
-  --page-padding-x: 32px;
-  --page-padding-y: 28px;
-  --content-max-w:  900px;
+  /* 左右内边距：从 32px 提到 40px，给内容更多呼吸空间 */
+  --page-padding-x: 40px;
+  --page-padding-y: 32px;
+  /* 内容最大宽度：从 900 收到 820。
+     Qoder 的内容区相对窗口更窄，左右留白更大，
+     这是「不拥挤感」的主要来源之一。 */
+  --content-max-w:  820px;
   --nav-item-h:     34px;
 
   /* ---------- 玻璃强度 ----------

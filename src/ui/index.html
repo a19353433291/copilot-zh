@@ -164,13 +164,13 @@
 
           <div class="alert" id="result" hidden></div>
 
-          <!-- 详细状态 -->
-          <div>
-            <div class="group-label">
-              <span>运行详情</span>
+          <!-- 详细状态：默认折叠，避免首屏信息过载 -->
+          <details class="disclosure" id="home-detail-card">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">运行详情</span>
               <span class="badge" id="home-state-badge">—</span>
-            </div>
-            <div class="group" id="home-detail-card">
+            </summary>
+            <div class="group">
               <div class="row">
                 <div class="row-main">
                   <div class="row-title">GitHub Copilot 进程</div>
@@ -198,7 +198,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </details>
 
         </div>
       </section>
@@ -207,58 +207,46 @@
       <section class="page" data-page="translate">
         <div class="page-inner">
 
-          <!-- 环境检测 -->
-          <div>
-            <div class="section-head">
-              <span class="section-title">环境检测</span>
-              <button class="btn btn-sm btn-ghost" id="btn-locate">重新检测</button>
-            </div>
+          <!-- 环境检测：合并为单行摘要，默认折叠详情 -->
+          <details class="disclosure" id="check-details">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">环境检测</span>
+              <span class="badge" id="check-summary">—</span>
+            </summary>
             <div class="check-grid">
               <div class="check-item" id="check-app">
                 <div class="check-head">
-                  <span class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
-                  </span>
+                  <span class="check-title">Copilot 安装</span>
                   <span class="status-dot" id="check-app-dot"></span>
                 </div>
-                <div class="check-title">Copilot 安装</div>
                 <div class="check-value" id="check-app-value">检测中…</div>
               </div>
 
               <div class="check-item" id="check-proc">
                 <div class="check-head">
-                  <span class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                  </span>
+                  <span class="check-title">进程状态</span>
                   <span class="status-dot" id="check-proc-dot"></span>
                 </div>
-                <div class="check-title">进程状态</div>
                 <div class="check-value" id="check-proc-value">—</div>
               </div>
 
               <div class="check-item" id="check-port">
                 <div class="check-head">
-                  <span class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a6 6 0 0 1-12 0V8z"/></svg>
-                  </span>
+                  <span class="check-title">调试端口</span>
                   <span class="status-dot" id="check-port-dot"></span>
                 </div>
-                <div class="check-title">调试端口</div>
                 <div class="check-value" id="check-port-value">—</div>
               </div>
 
               <div class="check-item" id="check-monitor">
                 <div class="check-head">
-                  <span class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16"/><path d="M3 21v-5h5"/></svg>
-                  </span>
+                  <span class="check-title">常驻监控</span>
                   <span class="status-dot" id="check-monitor-dot"></span>
                 </div>
-                <div class="check-title">常驻监控</div>
                 <div class="check-value" id="check-monitor-value">—</div>
               </div>
             </div>
-          </div>
+          </details>
 
           <!-- 目标应用详情 -->
           <div>
@@ -408,12 +396,12 @@
             </div>
           </div>
 
-          <!-- 包信息 -->
-          <div>
-            <div class="group-label">
-              <span>包信息</span>
+          <!-- 包信息：默认折叠，次要信息不占首屏 -->
+          <details class="disclosure" id="dict-details">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">包信息</span>
               <span class="badge" id="dict-verify-badge">—</span>
-            </div>
+            </summary>
             <div class="group">
               <div class="row">
                 <div class="row-main">
@@ -460,7 +448,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </details>
 
           <!-- 说明 -->
           <div class="group">
@@ -759,11 +747,11 @@
             </div>
           </div>
 
-          <!-- 数据 -->
-          <div>
-            <div class="group-label">
-              <span>数据</span>
-            </div>
+          <!-- 数据：默认折叠，低频操作不占首屏 -->
+          <details class="disclosure">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">数据与维护</span>
+            </summary>
             <div class="group">
 
               <div class="row">
@@ -787,7 +775,7 @@
               </div>
 
             </div>
-          </div>
+          </details>
 
         </div>
       </section>

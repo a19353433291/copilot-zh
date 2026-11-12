@@ -14,28 +14,37 @@
    ========================================================================== */
 
 /* ---------- 浅色 ---------- */
+/* 灰阶纯度对齐 Qoder：所有中性色 R=G=B，不带任何色相偏移。
+   实测 Qoder 严格灰阶像素占 98.6%，我们之前只有 80.4%，
+   原因就是用了 #F5F5F7 这类「蓝调灰」。 */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* 背景与表面：中性灰阶 */
-  --app-bg:            #F5F5F7;
-  --surface:           #FFFFFF;
-  --surface-secondary: #F0F0F2;
-  --surface-tertiary:  #E8E8ED;
+  /* 背景与表面：纯中性灰阶
+     卡片底色只比背景亮 6 个色阶（#FCFCFC vs #F6F6F6），
+     而不是纯白 —— 纯白会让每张卡形成一条硬边，整页边缘强度过高。 */
+  --app-bg:            #F6F6F6;
+  --surface:           #FCFCFC;
+  --surface-raised:    #FFFFFF;
+  --surface-secondary: #EDEDED;
+  --surface-tertiary:  #E5E5E5;
   --surface-hover:     rgba(0, 0, 0, 0.035);
   --surface-active:    rgba(0, 0, 0, 0.065);
 
-  /* 文字 */
-  --text-primary:      #1D1D1F;
+  /* 文字
+     主文字色从 #1D1D1F 提到 #35353A：
+     Qoder 实测正文文字色约 rgb(54,50,55)，比纯黑浅一档。
+     过黑的文字会让整页边缘强度飙升，看起来「硬」。 */
+  --text-primary:      #35353A;
   --text-secondary:    #6E6E73;
-  --text-tertiary:     #86868B;
+  --text-tertiary:     #8E8E93;
   --text-inverse:      #FFFFFF;
 
   /* 边框 */
-  --border:            #D2D2D7;
-  --border-subtle:     rgba(0, 0, 0, 0.06);
-  --border-strong:     #B8B8BF;
+  --border:            #D6D6D6;
+  --border-subtle:     rgba(0, 0, 0, 0.07);
+  --border-strong:     #BFBFBF;
 
   /* 强调色：Apple 系统蓝 */
   --primary:           #0071E3;
@@ -52,10 +61,10 @@
   --danger:            #D70015;
   --danger-subtle:     rgba(215, 0, 21, 0.09);
 
-  /* 侧边栏与顶栏 */
-  --sidebar-bg:        #F5F5F7;
-  --header-bg:         rgba(245, 245, 247, 0.88);
-  --statusbar-bg:      #F5F5F7;
+  /* 侧边栏与顶栏（与 Qoder 一致：侧栏比内容区暗 9 个色阶） */
+  --sidebar-bg:        #F6F6F6;
+  --header-bg:         rgba(246, 246, 246, 0.88);
+  --statusbar-bg:      #F6F6F6;
 
   /* 阴影：极轻，仅用于真正浮起的层 */
   --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.05);

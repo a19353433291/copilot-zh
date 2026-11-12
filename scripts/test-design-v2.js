@@ -164,11 +164,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     groups: document.querySelectorAll('.group').length,
     cards: document.querySelectorAll('.card').length,
     groupLabels: document.querySelectorAll('.group-label').length,
+    disclosureTitles: document.querySelectorAll('.disclosure-title').length,
+    disclosures: document.querySelectorAll('.disclosure').length,
+    disclosureTitles: document.querySelectorAll('.disclosure-title').length,
+    disclosures: document.querySelectorAll('.disclosure').length,
     statGrids: document.querySelectorAll('.stat-grid').length
   })`);
   const st = JSON.parse(struct);
   check('已大量使用分组', st.groups >= 8, `group=${st.groups}, card=${st.cards}`);
-  check('分组标题存在', st.groupLabels >= 8, `${st.groupLabels} 个`);
+  // 部分分组标题已改为折叠头部（disclosure-title），两者合计应 >= 8
+  check('分组标题存在', (st.groupLabels + st.disclosureTitles) >= 8,
+    `group-label ${st.groupLabels} + disclosure ${st.disclosureTitles}`);
   check('统计格合并为容器', st.statGrids >= 2, `${st.statGrids} 个容器`);
 
   await ev(`document.documentElement.dataset.theme = 'system'`);

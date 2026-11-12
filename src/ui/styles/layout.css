@@ -264,7 +264,9 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-7);
+  /* 分组之间的呼吸空间：Qoder 实测有 14-22px 的连续空白带，
+     我们把分组间距从 32px 提到 40px，让每组之间真正「断开」 */
+  gap: var(--space-8);
 }
 
 /* 状态栏 */

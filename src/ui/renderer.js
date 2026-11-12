@@ -596,11 +596,15 @@ function updateStats() {
   }
 }
 
-$('btn-locate').addEventListener('click', async () => {
-  setBusy(true, '正在检测…');
-  await locateTarget();
-  setBusy(false, '检测完成');
-});
+// 「重新检测」按钮已并入折叠摘要，元素可能不存在，做防御式绑定
+const btnLocate = $('btn-locate');
+if (btnLocate) {
+  btnLocate.addEventListener('click', async () => {
+    setBusy(true, '正在检测…');
+    await locateTarget();
+    setBusy(false, '检测完成');
+  });
+}
 
 $('btn-choose').addEventListener('click', async () => {
   const r = await window.api.chooseApp();
@@ -688,6 +692,22 @@ function refreshChecks() {
       if (monItem) monItem.className = 'check-item';
       if (monDot) monDot.className = 'status-dot';
     }
+  }
+
+  // 折叠摘要：一行概括四项检测的整体状态
+  const summary = $('check-summary');
+  if (summary) {
+    const items = [];
+    if (state.target) items.push('已安装');
+    else items.push('未安装');
+    if (w && w.copilotRunning) items.push('运行中');
+    else items.push('未运行');
+    if (w && w.injected) items.push('已连接');
+    else items.push('未连接');
+
+    const allGood = !!state.target && w && w.copilotRunning && w.injected;
+    summary.className = 'badge' + (allGood ? ' ok' : '');
+    summary.textContent = items.join(' · ');
   }
 }
 
