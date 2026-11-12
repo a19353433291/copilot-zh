@@ -91,7 +91,7 @@
    概览页
    ========================================================================== */
 
-/* 主状态区：这是唯一需要突出显示的独立面板 */
+/* 主状态区：唯一需要突出显示的独立面板 */
 .hero-status {
   display: flex;
   align-items: center;
@@ -101,11 +101,12 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--surface);
-  /* 用左侧细色条表达状态，而不是给整张卡片染色 */
   position: relative;
   overflow: hidden;
 }
 
+/* 状态用左侧色条表达，但只有「真正需要注意」的状态才上色。
+   ok 状态改用中性灰 —— 一切正常时不需要用颜色提醒用户。 */
 .hero-status::before {
   content: '';
   position: absolute;
@@ -114,12 +115,14 @@
   bottom: 0;
   width: 3px;
   background: var(--text-tertiary);
-  transition: background-color var(--dur-normal) var(--ease-standard);
+  opacity: .45;
+  transition: background-color var(--dur-normal) var(--ease-standard),
+              opacity var(--dur-normal) var(--ease-standard);
 }
-.hero-status.is-ok::before   { background: var(--success); }
-.hero-status.is-warn::before { background: var(--warning); }
-.hero-status.is-err::before  { background: var(--danger); }
-.hero-status.is-busy::before { background: var(--primary); }
+.hero-status.is-ok::before   { background: var(--text-tertiary); opacity: .45; }
+.hero-status.is-warn::before { background: var(--warning); opacity: 1; }
+.hero-status.is-err::before  { background: var(--danger); opacity: 1; }
+.hero-status.is-busy::before { background: var(--text-secondary); opacity: .7; }
 
 .hero-status-main {
   display: flex;
@@ -259,12 +262,16 @@
 }
 .engine-item:hover { background: var(--surface-hover); }
 
+/* 选中态改用中性灰底 + 灰色左标记，不再用主色填充
+   --------------------------------------------------------------------------
+   大面积主色填充是「AI 模板感」的典型特征之一。
+   选中只意味着「当前选项」，不需要用高饱和色强调。
+   -------------------------------------------------------------------------- */
 .engine-item.selected {
-  background: var(--primary-subtle);
-  border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+  background: var(--surface-secondary);
+  border-color: var(--border-subtle);
 }
 
-/* 选中态再加一条左侧标记，避免仅靠背景色表达 */
 .engine-item.selected::before {
   content: '';
   position: absolute;
@@ -273,7 +280,17 @@
   bottom: 8px;
   width: 2px;
   border-radius: 0 2px 2px 0;
-  background: var(--primary);
+  background: var(--text-primary);
+}
+
+/* 单选圆点也用中性色 */
+.engine-item.selected .radio-mark { border-color: var(--text-primary); }
+.engine-item.selected .radio-mark::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--text-primary);
 }
 
 .engine-item:focus-visible {
@@ -281,7 +298,7 @@
   outline-offset: -2px;
 }
 
-/* 单选标记 */
+/* 单选标记：中性色，不用主色 */
 .radio-mark {
   position: relative;
   width: 15px;
@@ -291,14 +308,6 @@
   flex-shrink: 0;
   margin-top: 2px;
   transition: border-color var(--dur-fast) var(--ease-standard);
-}
-.engine-item.selected .radio-mark { border-color: var(--primary); }
-.engine-item.selected .radio-mark::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--primary);
 }
 
 .engine-body { flex: 1; min-width: 0; }
@@ -323,7 +332,9 @@
   margin-top: 6px;
 }
 
-/* 标签改为「小圆点 + 文字」，不再用彩色胶囊 */
+/* 标签改为「小圆点 + 文字」。
+   圆点也统一为中性灰 —— 这些是能力说明而不是状态告警，
+   不需要绿色/黄色来区分。 */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -340,7 +351,7 @@
   background: var(--text-tertiary);
   flex-shrink: 0;
 }
-.tag.good::before { background: var(--success); }
+.tag.good::before { background: var(--text-tertiary); }
 .tag.bad::before  { background: var(--warning); }
 
 .footnote {
@@ -410,16 +421,17 @@
   transition: color var(--dur-normal) var(--ease-standard);
 }
 
+/* 流程步骤：进行中用中性色呼吸，已完成用深色实心，失败才上红 */
 .flow-step.active .flow-marker {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
   animation: pulse-dot 1.6s var(--ease-in-out) infinite;
 }
-.flow-step.active .flow-label { color: var(--primary-text); font-weight: var(--font-medium); }
+.flow-step.active .flow-label { color: var(--text-primary); font-weight: var(--font-medium); }
 
 .flow-step.done .flow-marker {
-  border-color: var(--success);
-  background: var(--success);
+  border-color: var(--text-secondary);
+  background: var(--text-secondary);
 }
 .flow-step.done .flow-marker::after {
   content: '';
@@ -428,12 +440,12 @@
   top: 0.6px;
   width: 3px;
   height: 6px;
-  border: solid #fff;
+  border: solid var(--surface);
   border-width: 0 1.4px 1.4px 0;
   transform: rotate(45deg);
 }
 .flow-step.done .flow-label { color: var(--text-secondary); }
-.flow-step.done:not(:last-child)::after { background: color-mix(in srgb, var(--success) 45%, transparent); }
+.flow-step.done:not(:last-child)::after { background: var(--text-tertiary); opacity: .5; }
 
 .flow-step.failed .flow-marker {
   border-color: var(--danger);

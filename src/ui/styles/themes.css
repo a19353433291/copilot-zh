@@ -66,6 +66,8 @@
   --nav-active-bg:     rgba(0, 0, 0, 0.055);
   --nav-active-text:   var(--text-primary);
   --nav-hover-bg:      rgba(0, 0, 0, 0.032);
+  /* 选中指示条：中性深灰，不用主色（减少界面彩色元素） */
+  --nav-indicator:     #1D1D1F;
 
   /* 滚动条 */
   --scrollbar-thumb:       rgba(0, 0, 0, 0.20);
@@ -119,6 +121,7 @@
   --nav-active-bg:     rgba(255, 255, 255, 0.085);
   --nav-active-text:   var(--text-primary);
   --nav-hover-bg:      rgba(255, 255, 255, 0.045);
+  --nav-indicator:     #F5F5F7;
 
   --scrollbar-thumb:       rgba(255, 255, 255, 0.20);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
@@ -171,6 +174,7 @@
     --nav-active-bg:     rgba(255, 255, 255, 0.085);
     --nav-active-text:   var(--text-primary);
     --nav-hover-bg:      rgba(255, 255, 255, 0.045);
+  --nav-indicator:     #F5F5F7;
 
     --scrollbar-thumb:       rgba(255, 255, 255, 0.20);
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);

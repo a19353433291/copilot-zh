@@ -256,6 +256,12 @@
    ========================================================================== */
 
 /* 无状态徽章：不使用填充，只做淡描边，避免出现灰色块 */
+/* 徽章：全部改为「无底色 + 着色文字」
+   --------------------------------------------------------------------------
+   参考 Qoder：有色元素越少越高级。
+   底色填充会造成大片色块，改为只让文字着色，
+   既不丢失状态语义，也不增加视觉噪声。
+   -------------------------------------------------------------------------- */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -270,12 +276,33 @@
   background: transparent;
   color: var(--text-tertiary);
 }
-.badge.ok     { background: var(--success-subtle); border-color: transparent; color: var(--success); }
-.badge.warn   { background: var(--warning-subtle); border-color: transparent; color: var(--warning); }
-.badge.err    { background: var(--danger-subtle);  border-color: transparent; color: var(--danger); }
-.badge.info   { background: var(--primary-subtle); border-color: transparent; color: var(--primary-text); }
+.badge.ok     { border-color: transparent; color: var(--success); }
+.badge.warn   { border-color: transparent; color: var(--warning); }
+.badge.err    { border-color: transparent; color: var(--danger); }
+/* info 是「中性提示」而非「需要关注」，用文字次级色，不上彩色 */
+.badge.info   { border-color: transparent; color: var(--text-secondary); }
 
-/* 状态灯 */
+/* 状态徽章前置一个小圆点，让状态更易扫读（替代原来的底色块） */
+.badge.ok::before,
+.badge.warn::before,
+.badge.err::before,
+.badge.info::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* 状态灯
+   --------------------------------------------------------------------------
+   遵循「正常状态不用颜色」的原则：
+     ok   → 中性灰（一切正常，不需要视觉提示）
+     busy → 中性灰 + 呼吸动画（用动效而非颜色表达进行中）
+     warn → 黄色（需要留意）
+     err  → 红色（出错）
+   -------------------------------------------------------------------------- */
 .status-dot {
   width: 7px;
   height: 7px;
@@ -284,10 +311,13 @@
   flex-shrink: 0;
   transition: background-color var(--dur-normal) var(--ease-standard);
 }
-.status-dot.ok   { background: var(--success); }
+.status-dot.ok   { background: var(--text-tertiary); }
 .status-dot.warn { background: var(--warning); animation: pulse-dot 2s var(--ease-in-out) infinite; }
 .status-dot.err  { background: var(--danger); }
-.status-dot.busy { background: var(--primary); animation: pulse-dot 1.5s var(--ease-in-out) infinite; }
+.status-dot.busy {
+  background: var(--text-secondary);
+  animation: pulse-dot 1.5s var(--ease-in-out) infinite;
+}
 .status-dot.lg   { width: 9px; height: 9px; }
 
 /* ==========================================================================
@@ -667,21 +697,30 @@
 }
 .alert-body { flex: 1; min-width: 0; }
 
+/* 提示框：无彩色底色，只用文字色 + 左侧细线表达语义 */
 .alert.ok {
-  background: var(--success-subtle);
-  border-color: transparent;
-  color: var(--success);
+  background: var(--surface-secondary);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--success);
 }
 .alert.err {
-  background: var(--danger-subtle);
-  border-color: transparent;
-  color: var(--danger);
+  background: var(--surface-secondary);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--danger);
 }
 .alert.info {
-  background: var(--primary-subtle);
-  border-color: transparent;
-  color: var(--primary-text);
+  background: var(--surface-secondary);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--text-tertiary);
 }
+
+/* 提示图标承担色彩语义 */
+.alert.ok svg, .alert.ok .alert-icon svg { color: var(--success); }
+.alert.err svg, .alert.err .alert-icon svg { color: var(--danger); }
+.alert.info svg, .alert.info .alert-icon svg { color: var(--text-secondary); }
 
 /* ==========================================================================
    12. Empty / Skeleton

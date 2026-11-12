@@ -138,7 +138,11 @@
   color: var(--text-primary);
 }
 
-/* 选中态：低调的灰底 + 左侧细蓝条 */
+/* 选中态：低调的灰底 + 左侧细条
+   --------------------------------------------------------------------------
+   Qoder 的做法是让导航项「只有明度差别，没有色彩」。
+   这里把之前的主色蓝条改成中性深灰条，进一步减少全界面的彩色元素数量。
+   -------------------------------------------------------------------------- */
 .nav-item.active {
   background: var(--nav-active-bg);
   color: var(--nav-active-text);
@@ -155,7 +159,7 @@
   width: 2.5px;
   height: 15px;
   border-radius: 0 2px 2px 0;
-  background: var(--primary);
+  background: var(--nav-indicator);
 }
 
 .nav-item:focus-visible {
