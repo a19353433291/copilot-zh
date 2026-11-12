@@ -181,8 +181,8 @@ zh-CN-1.6.0/
     "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 926, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
-    "payload": { "name": "zh-CN-1.6.0.json", "size": 61803, "sha256": "..." }
+    "entryCounts": { "texts": 935, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 62335, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -215,7 +215,7 @@ Four matching strategies:
 
 ### Current coverage
 
-- **926** exact text entries
+- **935** exact text entries
 - **56** text regex rules
 - **28** attribute mappings
 - **37** attribute regex rules
