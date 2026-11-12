@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
 [![Electron](https://img.shields.io/badge/Electron-38-47848F?logo=electron)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.10.0-success)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-0.10.1-success)](https://github.com/)
 
 > 为 **GitHub Copilot 桌面版** 提供简体中文界面的 Windows 工具。
 > 不修改应用本体，数字签名保持完好，一次配置后随 Copilot 启动自动汉化。

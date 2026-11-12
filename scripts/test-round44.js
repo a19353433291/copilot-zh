@@ -159,8 +159,12 @@ function check(name, ok, detail) {
   check('有阴影', d.hasShadow, '');
   check('危险按钮为实心红', String(d.confirmBtnClass).includes('btn-danger-solid'), d.confirmBtnClass);
 
+  // 关闭后轮询等待（动画 140ms + 调度抖动，固定 400ms 不够稳定）
   await ev(`document.querySelector('.dialog-mask [data-act="cancel"]').click()`);
-  await sleep(400);
+  for (let i = 0; i < 20; i++) {
+    if (await ev(`!document.querySelector('.dialog-mask')`)) break;
+    await sleep(150);
+  }
   check('对话框可关闭', await ev(`!document.querySelector('.dialog-mask')`), '');
 
   console.log('\n════ 5. 更新区右侧元素 ════');

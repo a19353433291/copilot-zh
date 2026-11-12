@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
 [![Electron](https://img.shields.io/badge/Electron-38-47848F?logo=electron)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.10.0-success)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-0.10.1-success)](https://github.com/)
 
 > A Windows tool that provides a **Simplified Chinese interface** for the **GitHub Copilot desktop app**.
 > It does not modify the application itself, keeps its digital signature intact, and localizes automatically once configured.

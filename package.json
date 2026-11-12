@@ -1,6 +1,6 @@
 {
   "name": "copilot-zh",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Copilot 汉化助手 — GitHub Copilot 桌面版中文汉化工具（Windows）",
   "main": "electron/main.js",
   "author": "copilot-zh",

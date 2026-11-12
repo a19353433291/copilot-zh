@@ -205,8 +205,12 @@ function check(name, ok, detail) {
   check('使用设计圆角', parseFloat(d.radius) >= 10, d.radius);
 
   // 关闭对话框
+  // 关闭后轮询等待（动画 140ms + 调度抖动，固定 400ms 不够稳定）
   await ev(`document.querySelector('.dialog-mask [data-act="cancel"]').click()`);
-  await sleep(400);
+  for (let i = 0; i < 20; i++) {
+    if (await ev(`!document.querySelector('.dialog-mask')`)) break;
+    await sleep(150);
+  }
   const closed = await ev(`!document.querySelector('.dialog-mask')`);
   check('对话框可关闭', closed, '');
 
