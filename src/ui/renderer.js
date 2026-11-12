@@ -301,7 +301,7 @@ function initSelect(wrapId, onChange) {
 }
 
 let intervalSelect = null;
-let glassSelect = null;
+
 
 // ---------------------------------------------------------------------------
 // 初始化
@@ -325,6 +325,9 @@ async function init() {
   refreshChecks();
   resetFlow();
 
+  // 覆盖率卡片初始态（未汉化时显示占位）
+  renderCoverage(null);
+
   // 顶栏材质随滚动切换（玻璃设置在「增强」档才有可见差异）
   initTopbarMaterial();
 
@@ -332,6 +335,9 @@ async function init() {
 
   // 主题分段控件
   await initThemeUI();
+
+  // 交互反馈（按钮涟漪等）
+  Feedback.initRipple();
 }
 
 async function checkAdmin() {
@@ -372,12 +378,6 @@ async function initThemeUI() {
       patchSettings({ motion: v });
     });
   }
-
-  // 玻璃强度
-  glassSelect = initSelect('sel-glass', (value) => {
-    ThemeController.set({ glass: value });
-    patchSettings({ glass: value });
-  });
 
   // 系统主题变化时重绘（仅 system 模式内部会通知）
   ThemeController.watchSystem();
@@ -508,9 +508,70 @@ function renderWatcher(st) {
 }
 
 /**
- * 渲染概览页「运行详情」卡片。
- * 所有字段均来自 watcher 真实状态，不使用静态假数据。
+ * 渲染汉化覆盖情况。
+ * 数据来源：本次汉化实际替换的数量 + 字典包总条目数。
+ * 没有真实数据时显示占位，不编造数字。
  */
+function renderCoverage(info) {
+  const badge = $('coverage-badge');
+  const pctEl = $('coverage-pct');
+  const ring = $('ring-fill');
+  const doneEl = $('coverage-done');
+  const pendingEl = $('coverage-pending');
+  const keepEl = $('coverage-keep');
+  const hint = $('coverage-hint');
+
+  // 字典总条目数（可作为「应汉化总量」的参考）
+  const total = (state.pack && state.pack.counts)
+    ? ((state.pack.counts.texts || 0) + (state.pack.counts.patterns || 0) +
+       (state.pack.counts.attrs || 0) + (state.pack.counts.attrPatterns || 0))
+    : 0;
+
+  if (!info || !info.replaced) {
+    // 尚未汉化：显示占位
+    if (badge) { badge.className = 'badge'; badge.textContent = '未汉化'; }
+    if (pctEl) pctEl.textContent = '—';
+    if (ring) ring.style.strokeDashoffset = '188.5';
+    if (doneEl) doneEl.textContent = '—';
+    if (pendingEl) pendingEl.textContent = total ? String(total) : '—';
+    if (keepEl) keepEl.textContent = '—';
+    if (hint) hint.textContent = '汉化后这里会显示本次实际替换的文案数量。';
+    return;
+  }
+
+  const replaced = info.replaced || 0;
+  // 覆盖率 = 实际替换数 / 字典规则总数。
+  // 注意：替换数可能大于字典条目数（同一条规则在页面多处命中），
+  // 所以分母用「字典规则数」，分子上限截断到 100%。
+  const pct = total > 0 ? Math.min(100, Math.round((replaced / total) * 100)) : 0;
+  // 待汉化 = 字典里还没在本次页面命中的规则数（不少于 0）
+  const pending = Math.max(0, total - Math.min(replaced, total));
+  // 额外命中：同一规则在多处生效，超出字典条目数的部分
+  const extra = Math.max(0, replaced - total);
+
+  if (badge) {
+    badge.className = 'badge ok';
+    badge.textContent = '已汉化';
+  }
+  if (pctEl) pctEl.textContent = pct + '%';
+
+  if (ring) {
+    const C = 188.5;
+    ring.style.strokeDashoffset = String(C - (C * pct) / 100);
+  }
+
+  if (doneEl) doneEl.textContent = replaced.toLocaleString('zh-CN');
+  if (pendingEl) pendingEl.textContent = total.toLocaleString('zh-CN');
+  if (keepEl) keepEl.textContent = extra > 0 ? extra.toLocaleString('zh-CN') : '0';
+
+  if (hint) {
+    hint.textContent = extra > 0
+      ? `本次在界面中实际替换 ${replaced.toLocaleString('zh-CN')} 处文案，`
+        + `其中超出字典条目数的 ${extra.toLocaleString('zh-CN')} 处来自同一规则在多处命中。`
+      : `本次在界面中实际替换 ${replaced.toLocaleString('zh-CN')} 处文案；`
+        + `字典库共 ${total.toLocaleString('zh-CN')} 条规则，未命中的会在界面出现对应文案时自动应用。`;
+  }
+}
 function renderWatcherDetail(st) {
   // 总体状态徽章
   const badge = $('home-state-badge');
@@ -671,7 +732,9 @@ function updateStats() {
   const dictEl = $('stat-dict');
   if (dictEl) {
     if (state.pack) {
-      const n = (state.pack.counts && state.pack.counts.texts) || 0;
+      // 与覆盖率卡片统一：四类规则全部计入
+      const c = state.pack.counts || {};
+      const n = (c.texts || 0) + (c.patterns || 0) + (c.attrs || 0) + (c.attrPatterns || 0);
       dictEl.className = 'stat-value';
       animateNumber(dictEl, n);
     } else {
@@ -1090,7 +1153,6 @@ async function loadSettings() {
   // 同步主题到 DOM（主进程保存的值是唯一真相）
   ThemeController.syncFromSettings(r.data);
   if (themeSegmented) themeSegmented.set(r.data.theme || 'system');
-  if (glassSelect) glassSelect.set(r.data.glass || 'normal');
 
   // 间隔下拉
   if (!intervalSelect) {
@@ -1215,6 +1277,11 @@ async function doApply(btnId) {
     showResult('ok',
       `汉化已生效：替换 ${stats.replaced || 0} 处文案${acts}\n\n已验证通过，可以正常使用 GitHub Copilot。`);
     Toast.ok('汉化完成', `替换 ${stats.replaced || 0} 处文案`);
+    // 成功反馈：主状态卡光环 + 字典数字弹跳
+    Feedback.success($('hero-card'));
+    popNumber($('stat-dict'));
+    // 更新汉化覆盖卡片
+    renderCoverage({ replaced: stats.replaced || 0 });
     // 注入成功后刷新检测状态
     setTimeout(refreshChecks, 400);
   } else {
@@ -1224,6 +1291,7 @@ async function doApply(btnId) {
     let msg = r.reason || '未知原因';
     if (r.code === 'NO_ADMIN') msg += '\n\n请点击右上角「以管理员身份重启」。';
     showResult('err', msg);
+    Feedback.error($('hero-card'));
   }
 }
 

@@ -13,16 +13,14 @@
 const ThemeController = (() => {
   const VALID_THEMES = ['light', 'dark', 'system'];
   const VALID_MOTION = ['on', 'off'];
-  const VALID_GLASS = ['off', 'normal', 'strong'];
 
-  let current = { theme: 'system', motion: 'on', glass: 'normal' };
+  let current = { theme: 'system', motion: 'on' };
 
   /** 把偏好写入 DOM（CSS 据此渲染） */
   function applyToDom(pref) {
     const root = document.documentElement;
     root.dataset.theme = VALID_THEMES.includes(pref.theme) ? pref.theme : 'system';
     root.dataset.motion = VALID_MOTION.includes(pref.motion) ? pref.motion : 'on';
-    root.dataset.glass = VALID_GLASS.includes(pref.glass) ? pref.glass : 'normal';
   }
 
   /** 解析当前实际生效的主题（system 时读系统设置） */
@@ -44,14 +42,14 @@ const ThemeController = (() => {
     try {
       const raw = localStorage.getItem('cz-theme-hint');
       if (!raw) {
-        applyToDom({ theme: 'system', motion: 'on', glass: 'normal' });
+        applyToDom({ theme: 'system', motion: 'on' });
         return;
       }
       const parsed = JSON.parse(raw);
       applyToDom(parsed);
       current = { ...current, ...parsed };
     } catch (e) {
-      applyToDom({ theme: 'system', motion: 'on', glass: 'normal' });
+      applyToDom({ theme: 'system', motion: 'on' });
     }
   }
 
@@ -70,7 +68,6 @@ const ThemeController = (() => {
     set({
       theme: data.theme || 'system',
       motion: data.motion || 'on',
-      glass: data.glass || 'normal',
     });
   }
 

@@ -97,10 +97,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   console.log('=== 下拉遮挡检测 ===');
 
-  for (const selId of ['sel-glass', 'sel-interval']) {
+  for (const selId of ['sel-interval']) {
     // 确保是浅色主题 + 标准玻璃（复现用户报告的条件）
     await ev(`document.documentElement.dataset.theme = 'light'`);
-    await ev(`document.documentElement.dataset.glass = 'normal'`);
     await sleep(250);
 
     // 滚动到该控件
@@ -147,10 +146,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(250);
   }
 
-  // 视觉截图：打开 glass 下拉
-  await ev(`document.querySelector('#sel-glass').scrollIntoView({block:'center'})`);
+  // 视觉截图：打开 interval 下拉
+  await ev(`document.querySelector('#sel-interval').scrollIntoView({block:'center'})`);
   await sleep(300);
-  await ev(`document.querySelector('#sel-glass .select-trigger').click()`);
+  await ev(`document.querySelector('#sel-interval .select-trigger').click()`);
   await sleep(500);
   let shot = await ws.send('Page.captureScreenshot', { format: 'png' });
   fs.writeFileSync('C:\\Users\\a1935\\Desktop\\copilot-zh\\docs\\images\\ui-dropdown-light.png', Buffer.from(shot.data, 'base64'));
@@ -162,20 +161,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // 确保菜单处于关闭状态再打开（避免连点导致状态翻转）
   await ev(`(() => {
-    const m = document.querySelector('#sel-glass .select-menu');
-    if (!m.hidden) { document.querySelector('#sel-glass .select-trigger').click(); }
+    const m = document.querySelector('#sel-interval .select-menu');
+    if (!m.hidden) { document.querySelector('#sel-interval .select-trigger').click(); }
   })()`);
   await sleep(350);
-  await ev(`document.querySelector('#sel-glass').scrollIntoView({block:'center'})`);
+  await ev(`document.querySelector('#sel-interval').scrollIntoView({block:'center'})`);
   await sleep(350);
-  await ev(`document.querySelector('#sel-glass .select-trigger').click()`);
+  await ev(`document.querySelector('#sel-interval .select-trigger').click()`);
   await sleep(600);
 
-  const menuVisible = await ev(`!document.querySelector('#sel-glass .select-menu').hidden`);
+  const menuVisible = await ev(`!document.querySelector('#sel-interval .select-menu').hidden`);
   check('深色下菜单已展开', menuVisible === true);
 
   const darkProbe = await ev(`(() => {
-    const menu = document.querySelector('#sel-glass .select-menu');
+    const menu = document.querySelector('#sel-interval .select-menu');
     const r = menu.getBoundingClientRect();
     if (r.height === 0) return JSON.stringify({ error: 'not visible', blocked: -1 });
     let blocked = 0;
@@ -196,7 +195,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('  已保存深色下拉截图');
 
   // 关闭下拉并复原
-  await ev(`document.querySelector('#sel-glass .select-trigger').click()`);
+  await ev(`document.querySelector('#sel-interval .select-trigger').click()`);
   await sleep(200);
   await ev(`document.documentElement.dataset.theme = 'system'`);
 

@@ -24,11 +24,16 @@
 .stat-card {
   flex: 1;
   min-width: 0;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-radius: 0;
   border: none;
   background: transparent;
   position: relative;
+  /* 悬停时轻微提亮，让数据可交互感更强 */
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.stat-card:hover {
+  background: var(--surface-secondary);
 }
 /* 竖向分割线 */
 .stat-card + .stat-card::before {
@@ -91,55 +96,102 @@
    概览页
    ========================================================================== */
 
-/* 主状态区：唯一需要突出显示的独立面板 */
+/* 主状态区：整页的视觉焦点
+   --------------------------------------------------------------------------
+   之前过于扁平（只有一个灰点和文字），缺少「这是个重要状态」的暗示。
+   现在用：品牌色图标块 + 呼吸动画 + 顶部渐变细线，建立视觉重量。 */
 .hero-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 16px 18px;
+  padding: 20px 22px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--surface);
   position: relative;
   overflow: hidden;
+  transition: border-color var(--dur-normal) var(--ease-standard),
+              box-shadow var(--dur-normal) var(--ease-standard);
 }
 
-/* 状态用左侧色条表达，但只有「真正需要注意」的状态才上色。
-   ok 状态改用中性灰 —— 一切正常时不需要用颜色提醒用户。 */
-.hero-status::before {
+/* 顶部一条极细的渐变线，暗示状态色而不染色 */
+.hero-status::after {
   content: '';
   position: absolute;
-  left: 0;
   top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--text-tertiary);
-  opacity: .45;
-  transition: background-color var(--dur-normal) var(--ease-standard),
-              opacity var(--dur-normal) var(--ease-standard);
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--hero-accent, var(--text-tertiary)) 18%,
+    var(--hero-accent, var(--text-tertiary)) 82%,
+    transparent 100%);
+  opacity: .55;
+  transition: background var(--dur-normal) var(--ease-standard);
 }
-.hero-status.is-ok::before   { background: var(--text-tertiary); opacity: .45; }
-.hero-status.is-warn::before { background: var(--warning); opacity: 1; }
-.hero-status.is-err::before  { background: var(--danger); opacity: 1; }
-.hero-status.is-busy::before { background: var(--text-secondary); opacity: .7; }
+
+.hero-status.is-ok   { --hero-accent: var(--success); }
+.hero-status.is-warn { --hero-accent: var(--warning); }
+.hero-status.is-err  { --hero-accent: var(--danger); }
+.hero-status.is-busy { --hero-accent: var(--primary); }
 
 .hero-status-main {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
   flex: 1;
 }
 
+/* 状态图标：从灰色小方块升级为带色调的圆形徽章 */
 .hero-status-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--surface-secondary);
   flex-shrink: 0;
+  position: relative;
+  transition: background-color var(--dur-normal) var(--ease-standard);
+}
+
+/* 状态点放在图标容器中央，尺寸放大 */
+.hero-status-icon .status-dot.lg {
+  width: 12px;
+  height: 12px;
+}
+
+.hero-status.is-ok .hero-status-icon {
+  background: var(--success-subtle);
+}
+.hero-status.is-ok .hero-status-icon .status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 18%, transparent);
+}
+.hero-status.is-err .hero-status-icon {
+  background: var(--danger-subtle);
+}
+.hero-status.is-err .hero-status-icon .status-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+.hero-status.is-warn .hero-status-icon {
+  background: var(--warning-subtle);
+}
+.hero-status.is-warn .hero-status-icon .status-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 18%, transparent);
+}
+.hero-status.is-busy .hero-status-icon {
+  background: var(--primary-subtle);
+}
+.hero-status.is-busy .hero-status-icon .status-dot {
+  background: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+  animation: breathe-soft 1.6s var(--ease-in-out) infinite;
 }
 
 .hero-status-text { min-width: 0; }
@@ -148,7 +200,7 @@
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,7 +210,7 @@
 .hero-status-sub {
   font-size: var(--text-base);
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -175,6 +227,111 @@
 .hero-actions {
   display: flex;
   gap: 10px;
+}
+
+/* ==========================================================================
+   汉化覆盖卡片
+   --------------------------------------------------------------------------
+   目的：把「汉化了多少」这件真实的事可视化。
+   一个圆环 + 三个数字，比堆装饰更能填充视觉空间、也更有信息价值。
+   ========================================================================== */
+
+.coverage-card .card-body { padding: 20px 22px; }
+
+.coverage-top {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+/* 进度圆环 */
+.coverage-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.coverage-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--surface-tertiary);
+  stroke-width: 6;
+}
+
+.ring-fill {
+  fill: none;
+  stroke: var(--success);
+  stroke-width: 6;
+  stroke-linecap: round;
+  /* 圆周长 2πr = 2 × 3.14159 × 30 ≈ 188.5 */
+  stroke-dasharray: 188.5;
+  stroke-dashoffset: 188.5;
+  transition: stroke-dashoffset 900ms var(--ease-out),
+              stroke var(--dur-normal) var(--ease-standard);
+}
+
+.coverage-pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 图例 */
+.coverage-legend {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--text-base);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-dot.ok      { background: var(--success); }
+.legend-dot.pending { background: var(--text-tertiary); }
+.legend-dot.keep    { background: var(--surface-tertiary); border: 1px solid var(--border-strong); }
+
+.legend-label {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.legend-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.coverage-hint {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
 }
 
 /* ==========================================================================

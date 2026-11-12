@@ -158,23 +158,6 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(200);
 
   // ---------- 4. 玻璃关闭 ----------
-  console.log('\n=== 4. 玻璃效果关闭 ===');
-  await ev(`document.documentElement.dataset.glass = 'off'`);
-  await sleep(250);
-  const glassOff = await ev(`(() => {
-    const sb = document.querySelector('.sidebar');
-    const cs = getComputedStyle(sb);
-    return JSON.stringify({
-      backdrop: cs.backdropFilter || cs.webkitBackdropFilter,
-      bg: cs.backgroundColor
-    });
-  })()`);
-  let go = {};
-  try { go = JSON.parse(glassOff); } catch (e) {}
-  check('backdrop-filter 已禁用', String(go.backdrop) === 'none' || !go.backdrop, true);
-  await ev(`document.documentElement.dataset.glass = 'normal'`);
-  await sleep(250);
-
   // ---------- 5. 主题切换后分段控件重绘 ----------
   console.log('\n=== 5. 主题切换后组件重绘 ===');
   await ev(`document.querySelector('.nav-item[data-page="settings"]').click()`);
@@ -217,20 +200,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // ---------- 7. 设置持久化完整往返 ----------
   console.log('\n=== 7. 设置持久化往返 ===');
-  const testPatch = { theme: 'dark', motion: 'off', glass: 'strong' };
+  const testPatch = { theme: 'dark', motion: 'off' };
   await ev(`window.api.setSettings(${JSON.stringify(testPatch)}).then(r => JSON.stringify(r))`);
   await sleep(400);
   const readBack = await ev(`window.api.getSettings().then(r => JSON.stringify({
-    theme: r.data.theme, motion: r.data.motion, glass: r.data.glass
+    theme: r.data.theme, motion: r.data.motion
   }))`);
   let rb = {};
   try { rb = JSON.parse(readBack); } catch (e) {}
   check('theme 写入并读回', rb.theme, 'dark');
   check('motion 写入并读回', rb.motion, 'off');
-  check('glass 写入并读回', rb.glass, 'strong');
 
   // 还原
-  await ev(`window.api.setSettings({ theme: 'system', motion: 'on', glass: 'normal' })`);
+  await ev(`window.api.setSettings({ theme: 'system', motion: 'on' })`);
   await sleep(300);
 
   // ---------- 8. 无效值拒绝 ----------

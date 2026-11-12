@@ -1,0 +1,254 @@
+/* ==========================================================================
+   Motion — 有质感的动效系统
+   --------------------------------------------------------------------------
+   之前只有 fade/scale，缺少「物理感」。
+   这里补充三类动效：
+     1. 入场编排（stagger）— 元素错峰出现，而非同时淡入
+     2. 状态反馈（pulse/ripple）— 操作有即时响应
+     3. 数值与进度 — 变化过程可见
+
+   所有动效都尊重 prefers-reduced-motion 与 data-motion="off"。
+   ========================================================================== */
+
+/* ---------- 1. 入场编排 ---------- */
+
+/* 从下方轻微上浮 + 淡入，带一点过冲 */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 从左侧滑入（用于列表项） */
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 高度展开（用于折叠区） */
+@keyframes expand-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- 2. 状态反馈 ---------- */
+
+/* 按钮点击涟漪 */
+@keyframes ripple-out {
+  from {
+    opacity: .5;
+    transform: scale(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+/* 成功脉冲：一次性光环扩散 */
+@keyframes success-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--success) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 0%, transparent);
+  }
+}
+
+/* 错误抖动：短促、幅度小，不夸张 */
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+/* 呼吸（用于进行中的状态点） */
+@keyframes breathe-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .55; transform: scale(.92); }
+}
+
+/* 进度条流动光泽 */
+@keyframes sheen {
+  0%   { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+
+/* 旋转（加载） */
+@keyframes spin-smooth {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- 3. 数值与内容 ---------- */
+
+/* 数字变化时轻微上跳 */
+@keyframes number-pop {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+
+/* Toast 进入：从右下滑入 */
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+/* ==========================================================================
+   应用规则
+   ========================================================================== */
+
+/* 页面切换：内容整体轻微上浮 */
+.page.active {
+  animation: rise-in var(--dur-slow) var(--ease-out);
+}
+
+/* 页面内直接子元素错峰入场（最多 6 个，避免延迟过长） */
+.page.active .page-inner > * {
+  animation: rise-in var(--dur-slow) var(--ease-out) backwards;
+}
+.page.active .page-inner > *:nth-child(1) { animation-delay: 0ms; }
+.page.active .page-inner > *:nth-child(2) { animation-delay: 40ms; }
+.page.active .page-inner > *:nth-child(3) { animation-delay: 80ms; }
+.page.active .page-inner > *:nth-child(4) { animation-delay: 110ms; }
+.page.active .page-inner > *:nth-child(5) { animation-delay: 135ms; }
+.page.active .page-inner > *:nth-child(n+6) { animation-delay: 155ms; }
+
+/* 折叠区展开 */
+.disclosure[open] > .group {
+  animation: expand-down var(--dur-normal) var(--ease-out);
+}
+
+/* 菜单出现 */
+.select-menu {
+  animation: rise-in var(--dur-fast) var(--ease-out);
+}
+
+/* Toast */
+.toast {
+  animation: toast-slide-in var(--dur-slow) var(--ease-out);
+}
+.toast.leaving {
+  animation: toast-slide-out var(--dur-fast) var(--ease-standard) forwards;
+}
+
+/* 状态点呼吸 */
+.status-dot.busy {
+  animation: breathe-soft 1.8s var(--ease-in-out) infinite;
+}
+
+/* 成功状态一次性光环 */
+.is-success-pulse {
+  animation: success-ring 700ms var(--ease-out);
+}
+
+/* 错误抖动 */
+.is-shake {
+  animation: shake-x 320ms var(--ease-standard);
+}
+
+/* 按钮点击涟漪容器 */
+.btn {
+  overflow: hidden;
+}
+.btn > .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  pointer-events: none;
+  animation: ripple-out 520ms var(--ease-out) forwards;
+  opacity: .35;
+}
+
+/* 数字变化 */
+.stat-value.is-pop {
+  animation: number-pop 320ms var(--ease-spring);
+}
+
+/* 加载指示 */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.6px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  animation: spin-smooth .65s linear infinite;
+}
+
+/* 进度条光泽（进行中） */
+.progress-fill.is-active {
+  background-image: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 60%, white) 50%,
+    var(--primary) 100%
+  );
+  background-size: 200% 100%;
+  animation: sheen 1.6s linear infinite;
+}
+
+/* 无障碍与动效关闭 */
+@media (prefers-reduced-motion: reduce) {
+  .page.active,
+  .page.active .page-inner > *,
+  .disclosure[open] > .group,
+  .select-menu,
+  .toast,
+  .status-dot.busy,
+  .btn > .ripple,
+  .stat-value.is-pop,
+  .progress-fill.is-active,
+  .is-success-pulse,
+  .is-shake {
+    animation: none !important;
+  }
+}
+
+:root[data-motion="off"] .page.active,
+:root[data-motion="off"] .page.active .page-inner > *,
+:root[data-motion="off"] .disclosure[open] > .group,
+:root[data-motion="off"] .select-menu,
+:root[data-motion="off"] .toast,
+:root[data-motion="off"] .status-dot.busy,
+:root[data-motion="off"] .progress-fill.is-active {
+  animation: none !important;
+}

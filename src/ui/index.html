@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="styles/base.css">
 <link rel="stylesheet" href="styles/layout.css">
 <link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/motion.css">
 <link rel="stylesheet" href="styles/pages.css">
 </head>
 <body>
@@ -175,6 +176,45 @@
           </div>
 
           <div class="alert" id="result" hidden></div>
+
+          <!-- 汉化覆盖情况：把「汉化了多少」可视化，填充下半屏并给出真实价值 -->
+          <div class="card coverage-card">
+            <div class="card-head">
+              <span class="card-title">汉化覆盖</span>
+              <span class="badge" id="coverage-badge">—</span>
+            </div>
+            <div class="card-body">
+              <div class="coverage-top">
+                <div class="coverage-ring" id="coverage-ring">
+                  <svg viewBox="0 0 72 72" aria-hidden="true">
+                    <circle class="ring-track" cx="36" cy="36" r="30"></circle>
+                    <circle class="ring-fill" id="ring-fill" cx="36" cy="36" r="30"></circle>
+                  </svg>
+                  <span class="coverage-pct" id="coverage-pct">—</span>
+                </div>
+                <div class="coverage-legend">
+                  <div class="legend-row">
+                    <span class="legend-dot ok"></span>
+                    <span class="legend-label">本次替换</span>
+                    <span class="legend-value" id="coverage-done">—</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-dot pending"></span>
+                    <span class="legend-label">字典规则</span>
+                    <span class="legend-value" id="coverage-pending">—</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-dot keep"></span>
+                    <span class="legend-label">多处命中</span>
+                    <span class="legend-value" id="coverage-keep">—</span>
+                  </div>
+                </div>
+              </div>
+              <p class="coverage-hint" id="coverage-hint">
+                汉化后这里会显示本次实际替换的文案数量。
+              </p>
+            </div>
+          </div>
 
           <!-- 详细状态：默认折叠，避免首屏信息过载 -->
           <details class="disclosure" id="home-detail-card">
@@ -632,24 +672,6 @@
                   <input type="checkbox" id="set-motion">
                   <span class="toggle-track"></span>
                 </span>
-              </div>
-
-              <div class="row">
-                <div class="row-main">
-                  <div class="row-title">玻璃质感</div>
-                  <div class="row-desc">侧边栏、顶栏与浮层的背景模糊强度。关闭可降低 GPU 占用</div>
-                </div>
-                <div class="select" id="sel-glass">
-                  <button class="select-trigger" data-value="normal">
-                    <span class="select-label">标准</span>
-                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </button>
-                  <div class="select-menu" hidden>
-                    <button class="select-option" data-value="off">关闭 · 纯实色</button>
-                    <button class="select-option active" data-value="normal">标准 · 轻微模糊</button>
-                    <button class="select-option" data-value="strong">增强 · 明显模糊</button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

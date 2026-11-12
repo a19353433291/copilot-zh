@@ -321,8 +321,8 @@ function buildTranslatorSource(dict) {
   const DICT = ${JSON.stringify(dict)};
   const texts = DICT.entries.texts || {};
   const attrs = DICT.entries.attrs || {};
-  const patterns = (DICT.entries.patterns || []).map(p => [new RegExp(p[0], p[2] || ''), p[1]]);
-  const attrPatterns = (DICT.entries.attrPatterns || []).map(p => [new RegExp(p[0], p[2] || ''), p[1]]);
+  const patterns = (DICT.entries.patterns || []).map(p => [new RegExp(p[0], (p[2] || '').replace(/g/g, '')), p[1]]);
+  const attrPatterns = (DICT.entries.attrPatterns || []).map(p => [new RegExp(p[0], (p[2] || '').replace(/g/g, '')), p[1]]);
 
   if (window.__copilotZh) {
     window.__copilotZh.dict = DICT;
@@ -409,6 +409,28 @@ function buildTranslatorSource(dict) {
     return changed ? out : null;
   }
 
+  // 替换串中的 {{n}} 占位：取第 n 个捕获组，再用 texts 词典翻译一次。
+  // 用于组合型文案，例如 "Edit shortcut for New tab" → "编辑「新建标签页」的快捷键"。
+  function translateCapture(src) {
+    const s = String(src == null ? '' : src).trim();
+    if (!s) return '';
+    return texts[s] !== undefined ? texts[s] : s;
+  }
+
+  /**
+   * 应用一条正则规则；不匹配返回 null。
+   * 支持 {{n}} 嵌套翻译占位。
+   */
+  function applyPattern(t, re, rep) {
+    const m = re.exec(t);
+    if (!m) return null;
+    let v = t.replace(re, rep);
+    if (rep.indexOf('{{') !== -1) {
+      v = v.replace(/\\{\\{(\\d+)\\}\\}/g, (all, d) => translateCapture(m[Number(d)]));
+    }
+    return v;
+  }
+
   function translateText(node) {
     const raw = node.nodeValue;
     if (!raw) return;
@@ -427,8 +449,8 @@ function buildTranslatorSource(dict) {
     }
     for (let i = 0; i < patterns.length; i++) {
       const [re, rep] = patterns[i];
-      if (re.test(t)) {
-        const v = t.replace(re, rep);
+      const v = applyPattern(t, re, rep);
+      if (v !== null) {
         if (v !== t) {
           // 正则替换后再做日期本地化（例如 "上次检查：November 11, 2026, at 10:21 PM"）
           const localized = localizeDateTime(v);
@@ -446,29 +468,94 @@ function buildTranslatorSource(dict) {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // 组合文案：一句话被 React 拆成多个 span（如逐词动画标题、带样式强调的
+  // "Copilot Fusion · Standard"）。这类文案单看每个文本节点都翻不出来，
+  // 需要把整个元素当一条文案处理。
+  //
+  // 安全边界：只在元素内部没有可交互元素 / 代码 / 图标时整体替换，
+  // 且文本必须命中词典（长度、子元素数量都受限），避免误伤布局。
+  // ---------------------------------------------------------------------
+  const COMPOSITE_SKIP = /^(BUTTON|A|INPUT|TEXTAREA|SELECT|OPTION|SVG|PATH|CODE|PRE|KBD|IMG)$/;
+
+  function translateComposite(root, allowTextContainers) {
+    if (!root || root.nodeType !== 1 || !root.querySelectorAll) return 0;
+    let n = 0;
+    // 全量扫描时只看标题内的装饰容器（逐词动画标题），成本极低；
+    // 处理新增子树时才放宽到 span/p（弹层卡片里的组合文案）。
+    const sel = allowTextContainers
+      ? '[aria-hidden="true"], h1, h2, h3, h4, span, p'
+      : 'h1 [aria-hidden="true"], h2 [aria-hidden="true"], h3 [aria-hidden="true"], h4 [aria-hidden="true"]';
+    const cands = root.querySelectorAll(sel);
+    let budget = 400;
+    for (const el of cands) {
+      if (--budget < 0) break;
+      if (!el.children || el.children.length === 0) continue;
+      if (el.children.length > 16) continue;
+      const quick = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+      if (!quick || quick.length < 8 || quick.length > 400) continue;
+      let ok = true;
+      let count = 0;
+      for (const d of el.querySelectorAll('*')) {
+        count++;
+        if (count > 12 || COMPOSITE_SKIP.test(d.tagName)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const t = quick;
+      let v = texts[t];
+      if (v === undefined) {
+        for (let i = 0; i < patterns.length; i++) {
+          const [re, rep] = patterns[i];
+          const r = applyPattern(t, re, rep);
+          if (r !== null && r !== t) { v = r; break; }
+        }
+      }
+      if (v === undefined || v === t) continue;
+      // 不整块替换 innerHTML（会破坏 React 管理的节点），
+      // 而是把译文写进第一个非空文本节点、其余文本节点清空。
+      const tns = [];
+      const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      let tn;
+      while ((tn = tw.nextNode())) { if (tn.nodeValue && tn.nodeValue.trim()) tns.push(tn); }
+      if (tns.length < 2) continue;
+      tns[0].nodeValue = v;
+      for (let i = 1; i < tns.length; i++) tns[i].nodeValue = '';
+      n++;
+    }
+    return n;
+  }
+
   function translateAttrs(el) {
+    // 注意：setAttribute 即使写入相同值也会触发 attributes 变更记录，
+    // 进而被 MutationObserver 再次回调。若不比较新旧值，会和观察者形成
+    // 无限循环（页面直接卡死）。所有写入都必须走这个函数。
+    function setAttr(name, value, current) {
+      if (value === undefined || value === null || value === current) return false;
+      el.setAttribute(name, value);
+      replaced++;
+      return true;
+    }
+
     for (const name of ['placeholder', 'title', 'aria-label', 'alt']) {
       const v = el.getAttribute && el.getAttribute(name);
       if (!v) continue;
 
       // 1) attrs 精确匹配
-      if (attrs[v] !== undefined) { el.setAttribute(name, attrs[v]); replaced++; continue; }
+      if (attrs[v] !== undefined) { setAttr(name, attrs[v], v); continue; }
 
       // 2) 回退到 texts 精确匹配
       //    很多 aria-label 与可见文案完全一样（如 "Send message"），
       //    若只在 attrs 里找会漏掉；这里共享同一份精确词典。
-      if (texts[v] !== undefined) { el.setAttribute(name, texts[v]); replaced++; continue; }
+      if (texts[v] !== undefined) { setAttr(name, texts[v], v); continue; }
 
       // 3) 属性专用正则
       let hit = false;
       for (let i = 0; i < attrPatterns.length; i++) {
         const [re, rep] = attrPatterns[i];
-        if (re.test(v)) {
-          let nv = v.replace(re, rep);
+        const nv = applyPattern(v, re, rep);
+        if (nv !== null) {
           const loc = localizeDateTime(nv);
-          el.setAttribute(name, loc || nv);
-          replaced++;
-          hit = true;
+          hit = setAttr(name, loc || nv, v);
           break;
         }
       }
@@ -477,26 +564,22 @@ function buildTranslatorSource(dict) {
       // 4) 通用文本正则（属性里也可能出现动态文案）
       for (let i = 0; i < patterns.length; i++) {
         const [re, rep] = patterns[i];
-        if (re.test(v)) {
-          const nv = v.replace(re, rep);
-          if (nv !== v) {
-            const loc = localizeDateTime(nv);
-            el.setAttribute(name, loc || nv);
-            replaced++;
-            hit = true;
-            break;
-          }
+        const nv = applyPattern(v, re, rep);
+        if (nv !== null && nv !== v) {
+          const loc = localizeDateTime(nv);
+          hit = setAttr(name, loc || nv, v);
+          break;
         }
       }
       if (hit) continue;
 
       // 5) 属性里含日期
       const loc2 = localizeDateTime(v);
-      if (loc2) { el.setAttribute(name, loc2); replaced++; }
+      if (loc2) setAttr(name, loc2, v);
     }
   }
 
-  function walk(root) {
+  function walk(root, compositeAll) {
     if (!root) return;
     if (root.nodeType === 3) { translateText(root); return; }
     if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
@@ -506,12 +589,13 @@ function buildTranslatorSource(dict) {
     while ((n = walker.nextNode())) translateText(n);
     if (root.querySelectorAll) {
       root.querySelectorAll('[placeholder],[title],[aria-label],[alt]').forEach(translateAttrs);
+      translateComposite(root, !!compositeAll);
     }
   }
 
   function apply() {
     const before = replaced;
-    walk(document.body || document.documentElement);
+    walk(document.body || document.documentElement, false);
     lastRun = Date.now();
     return replaced - before;
   }
@@ -525,33 +609,60 @@ function buildTranslatorSource(dict) {
   let idleRounds = 0;
   let sweepTimer = null;
 
+  // 自适应调度：上一次扫描结束之后再排下一次，避免 DOM 很大时
+  // setInterval 的回调堆积把渲染线程占满（页面会卡死）。
+  function scheduleSweep(delay) {
+    if (sweepTimer) clearTimeout(sweepTimer);
+    sweepTimer = setTimeout(() => {
+      sweepTimer = null;
+      sweep();
+    }, delay);
+  }
+
   function sweep() {
     if (!window.__copilotZh || !window.__copilotZh.running) return;
     const n = apply();
     if (n > 0) {
       idleRounds = 0;
+      scheduleSweep(200);
     } else {
       idleRounds++;
-      // 连续 20 次（约 10 秒）无新增，降到低频巡检
-      if (idleRounds === 20) {
-        clearInterval(sweepTimer);
-        sweepTimer = setInterval(sweep, 3000);
-      }
+      // 连续多次无新增后放慢，仅保留低频兜底
+      scheduleSweep(idleRounds > 20 ? 2000 : 400);
     }
   }
 
-  const observer = new MutationObserver(muts => {
-    // 防抖：React 频繁重渲染时避免卡顿
-    if (Date.now() - lastRun < 120) return;
-    for (const m of muts) {
-      if (m.type === 'characterData') translateText(m.target);
-      else if (m.type === 'attributes' && m.target && m.target.getAttribute) {
-        translateAttrs(m.target);
-      } else {
-        for (const n of m.addedNodes) walk(n);
-      }
+  // 变更合并：React 会一次性提交大量 DOM 变更。
+  // 旧实现在 120ms 内直接丢弃变更，导致新打开的菜单/面板先显示英文，
+  // 要等下一次 500ms 补偿扫描才变中文——这就是「先英文后中文」的闪烁来源。
+  // 现在改为全部收集、用微任务合并处理，尽量赶在浏览器绘制前完成翻译。
+  let pendingRoots = new Set();
+  let flushScheduled = false;
+
+  function flushPending() {
+    flushScheduled = false;
+    const roots = [...pendingRoots];
+    pendingRoots = new Set();
+    for (const r of roots) {
+      try { walk(r, true); } catch (e) { /* 单个节点失败不影响整体 */ }
     }
     lastRun = Date.now();
+  }
+
+  const observer = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.type === 'characterData') {
+        try { translateText(m.target); } catch (e) {}
+      } else if (m.type === 'attributes' && m.target && m.target.getAttribute) {
+        try { translateAttrs(m.target); } catch (e) {}
+      } else {
+        for (const n of m.addedNodes) pendingRoots.add(n);
+      }
+    }
+    if (pendingRoots.size && !flushScheduled) {
+      flushScheduled = true;
+      queueMicrotask(flushPending);
+    }
   });
 
   function boot() {
@@ -562,8 +673,9 @@ function buildTranslatorSource(dict) {
         attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'alt'],
       });
     } catch (e) {}
-    // 密集扫描：每 500ms 补偿一次，覆盖 React 分批渲染的窗口
-    sweepTimer = setInterval(sweep, 500);
+    // 启动后先密集补偿几轮，覆盖 React 分批渲染的窗口
+    // （菜单/弹层打开瞬间即可翻译，减少「先英文后中文」的观感）
+    scheduleSweep(150);
     document.documentElement.lang = 'zh-CN';
     if (document.title === 'GitHub Copilot') document.title = 'GitHub Copilot（中文）';
   }
@@ -581,7 +693,7 @@ function buildTranslatorSource(dict) {
     stop() {
       this.running = false;
       try { observer.disconnect(); } catch (e) {}
-      if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
+      if (sweepTimer) { clearTimeout(sweepTimer); sweepTimer = null; }
     },
     stats() { return { replaced, running: this.running }; },
   };
@@ -832,4 +944,5 @@ module.exports = {
   RuntimeInjectEngine, DEFAULT_PORT, isElevated, isElevatedAsync,
   readPolicy, readPolicyAsync, writePolicy, writePolicyAsync, removePolicy,
   queryTranslatorAlive, isPortReady, evaluateInPage,
+  buildTranslatorSource,
 };

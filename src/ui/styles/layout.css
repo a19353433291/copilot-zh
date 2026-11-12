@@ -143,25 +143,10 @@
    normal : 侧边栏半透明 + 轻模糊（贴边有一点透出感）
    strong : 更强的模糊与更低的底色不透明度
    -------------------------------------------------------------------------- */
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  :root[data-glass="normal"] .sidebar {
-    background: color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
-    backdrop-filter: blur(8px) saturate(130%);
-    -webkit-backdrop-filter: blur(8px) saturate(130%);
-  }
-  :root[data-glass="strong"] .sidebar {
-    background: color-mix(in srgb, var(--sidebar-bg) 82%, transparent);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-  }
-}
+
 
 /* 关闭玻璃：强制不透明，覆盖上面两条 */
-:root[data-glass="off"] .sidebar {
-  background: var(--sidebar-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+
 
 /* 品牌信息已移到标题栏，侧边栏从导航直接开始。
    顶部留一点内边距，让首个导航项不贴边。 */
@@ -310,17 +295,6 @@
   background: var(--header-bg);
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .topbar.scrolled {
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  }
-}
-:root[data-glass="off"] .topbar.scrolled {
-  background: var(--surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
 
 .topbar-left {
   display: flex;

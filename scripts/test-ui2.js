@@ -127,17 +127,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await ev(`document.getElementById('set-motion').click()`);
   await sleep(420);
 
-  await ev(`document.querySelector('#sel-glass .select-trigger').click()`);
-  await sleep(220);
-  check('玻璃下拉展开', await ev(`!document.querySelector('#sel-glass .select-menu').hidden`), true);
-  await ev(`document.querySelector('#sel-glass .select-option[data-value="off"]').click()`);
-  await sleep(320);
-  check('玻璃=off 生效', await ev(`document.documentElement.dataset.glass`), 'off');
-  await ev(`document.querySelector('#sel-glass .select-trigger').click()`);
-  await sleep(200);
-  await ev(`document.querySelector('#sel-glass .select-option[data-value="normal"]').click()`);
-  await sleep(320);
-  check('玻璃恢复 normal', await ev(`document.documentElement.dataset.glass`), 'normal');
+
 
   console.log('\n=== 5. 间隔下拉（原有功能）===');
   await ev(`document.querySelector('#sel-interval .select-trigger').click()`);
@@ -158,10 +148,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try { saved = JSON.parse(savedJson); } catch (e) {}
   const keys = Object.keys(saved);
   console.log('  磁盘设置项:', keys.join(', '));
-  check('设置项总数 10', keys.length, 10);
+  check('设置项总数 9', keys.length, 9);
   check('theme 已持久化', typeof saved.theme, 'string');
   check('motion 已持久化', typeof saved.motion, 'string');
-  check('glass 已持久化', typeof saved.glass, 'string');
   check('原有 launch 设置仍在', typeof saved.launchCopilotAfterApply, 'boolean');
   check('原有 autoInject 设置仍在', typeof saved.autoInjectOnStart, 'boolean');
   check('原有 interval 设置仍在', typeof saved.watchIntervalMs, 'number');

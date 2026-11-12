@@ -419,7 +419,7 @@
    --------------------------------------------------------------------------
    三个遮挡来源都要处理：
    1. .group 的 overflow:hidden 会裁切菜单
-   2. .card/.group 的 backdrop-filter 创建堆叠上下文，菜单压不住兄弟节点
+   2. .group 的圆角与层叠上下文，菜单压不住兄弟节点
    3. .content-area 的 overflow:hidden（浮起面板需要它来裁圆角）也会裁切菜单
    所以下拉打开时，把祖先链上所有会裁切/成层的容器都放开。
    -------------------------------------------------------------------------- */
@@ -500,18 +500,6 @@
   transform-origin: bottom right;
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .select-menu {
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-  }
-}
-:root[data-glass="off"] .select-menu {
-  background: var(--surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
 
 .select-option {
   display: flex;
@@ -809,13 +797,6 @@
   animation: toast-in var(--dur-slow) var(--ease-out);
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .toast {
-    background: color-mix(in srgb, var(--surface) 90%, transparent);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-  }
-}
 
 .toast.leaving { animation: toast-out var(--dur-fast) var(--ease-standard) forwards; }
 

@@ -154,6 +154,64 @@ const Toast = (() => {
 })();
 
 /* ==========================================================================
+   交互反馈
+   ========================================================================== */
+
+const Feedback = (() => {
+  const motionOff = () => document.documentElement.dataset.motion === 'off';
+  const reduce = () =>
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** 按钮点击涟漪。事件委托，避免给每个按钮单独绑定。 */
+  function initRipple() {
+    document.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('.btn');
+      if (!btn || btn.disabled) return;
+      if (motionOff() || reduce()) return;
+
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple';
+      ripple.style.width = size + 'px';
+      ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      btn.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 560);
+    }, { passive: true });
+  }
+
+  /** 给元素加一次性动效 class，动画结束自动移除 */
+  function pulse(el, cls, ms = 750) {
+    if (!el || motionOff() || reduce()) return;
+    el.classList.remove(cls);
+    // 强制重排以重启动画
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), ms);
+  }
+
+  /** 成功反馈：调用"成功光环" */
+  const success = (el) => pulse(el, 'is-success-pulse', 750);
+
+  /** 错误反馈：抖动 */
+  const error = (el) => pulse(el, 'is-shake', 340);
+
+  return { initRipple, success, error, pulse };
+})();
+
+/** 数字变化时轻微弹跳 */
+function popNumber(el) {
+  if (!el) return;
+  if (document.documentElement.dataset.motion === 'off') return;
+  el.classList.remove('is-pop');
+  void el.offsetWidth;
+  el.classList.add('is-pop');
+  setTimeout(() => el.classList.remove('is-pop'), 340);
+}
+
+/* ==========================================================================
    数字过渡（轻量）
    ========================================================================== */
 

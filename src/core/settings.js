@@ -18,7 +18,6 @@ const path = require('path');
 const ENUMS = {
   theme: ['light', 'dark', 'system'],
   motion: ['on', 'off'],
-  glass: ['off', 'normal', 'strong'],
 };
 
 /** 校验某个键的值是否合法 */
@@ -84,12 +83,6 @@ const DEFAULTS = {
    * off 时把过渡时长压到 1ms，保留状态切换但不做动画。
    */
   motion: 'on',
-
-  /**
-   * 液态玻璃质感强度：off / normal / strong
-   * off 可显著降低 GPU 占用（关闭 backdrop-filter）。
-   */
-  glass: 'normal',
 };
 
 class Settings {
