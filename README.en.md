@@ -181,8 +181,8 @@ zh-CN-1.6.0/
     "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 935, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
-    "payload": { "name": "zh-CN-1.6.0.json", "size": 62335, "sha256": "..." }
+    "entryCounts": { "texts": 997, "patterns": 60, "attrs": 28, "attrPatterns": 39 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 64957, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -215,10 +215,10 @@ Four matching strategies:
 
 ### Current coverage
 
-- **935** exact text entries
-- **56** text regex rules
+- **997** exact text entries
+- **60** text regex rules
 - **28** attribute mappings
-- **37** attribute regex rules
+- **39** attribute regex rules
 
 Full UI sweep against Copilot v1.3.0 (main window, sidebar pages, all settings tabs, user menu, command palette, announcements, About): every UI string is localized except theme/palette names, brand names, shortcuts and code identifiers.
 

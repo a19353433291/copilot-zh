@@ -180,8 +180,8 @@ zh-CN-1.6.0/
     "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 935, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
-    "payload": { "name": "zh-CN-1.6.0.json", "size": 62335, "sha256": "..." }
+    "entryCounts": { "texts": 997, "patterns": 60, "attrs": 28, "attrPatterns": 39 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 64957, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -222,10 +222,10 @@ zh-CN-1.6.0/
 
 ### 当前覆盖
 
-- **935** 条精确文本
-- **56** 条文本正则
+- **997** 条精确文本
+- **60** 条文本正则
 - **28** 条属性映射
-- **37** 条属性正则
+- **39** 条属性正则
 
 基于 Copilot v1.3.0 的全量界面巡检（主界面、侧边栏各页、设置全部子页、用户菜单、命令面板、公告面板、关于页），除主题/调色板名称、品牌名、快捷键与代码标识符外，界面文案已全部中文化。
 

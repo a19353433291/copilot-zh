@@ -638,9 +638,44 @@
     "Left bracket": "左方括号",
     "Right bracket": "右方括号",
     "Left Arrow": "左方向键",
-    "Right Arrow": "右方向键"
+    "Right Arrow": "右方向键",
+    "This tier is not available for the user's Copilot plan.": "此档位不适用于你当前的 Copilot 计划。",
+    "This tier is not available for the user’s Copilot plan.": "此档位不适用于你当前的 Copilot 计划。",
+    "Prioritizes versatile models for efficient everyday coding.": "优先使用通用模型，实现高效的日常编码。",
+    "Search models": "搜索模型",
+    "No models available": "没有可用模型",
+    "No matching sessions": "没有匹配的会话",
+    "Session...": "会话…",
+    "Session…": "会话…",
+    "AI usage": "AI 用量",
+    "View usage and plan...": "查看用量与计划…",
+    "View usage and plan…": "查看用量与计划…",
+    "Included": "已包含",
+    "Not included": "未包含",
+    "Available with": "可用计划：",
+    "Model": "模型"
   },
   "patterns": [
+    [
+      "^Available on the (.+) plan$",
+      "在 $1 计划中可用",
+      ""
+    ],
+    [
+      "^Not available on the (.+) plan$",
+      "在 $1 计划中不可用",
+      ""
+    ],
+    [
+      "^Provided by the GitHub account (.+) on github\\.com\\.$",
+      "由 github.com 上的 GitHub 账户 $1 提供。",
+      ""
+    ],
+    [
+      "^AI credits quota: (\\d+)% used, Ctrl \\+ Shift \\+ U$",
+      "AI 积分配额：已用 $1%, Ctrl + Shift + U",
+      ""
+    ],
     [
       "^Version ([\\d.]+)$",
       "版本 $1",
@@ -953,6 +988,16 @@
     "Sticky note": "便签"
   },
   "attrPatterns": [
+    [
+      "^Model$",
+      "模型",
+      ""
+    ],
+    [
+      "^Model, (.+)$",
+      "模型：{{1}}",
+      ""
+    ],
     [
       "^Keyboard shortcuts, (.+)$",
       "键盘快捷键，{{1}}",
@@ -1439,7 +1484,55 @@
     "Configure additional options in": "配置更多选项，请前往",
     "Set the font used for embedded terminals.": "设置内嵌终端使用的字体。",
     "Customize the terminal's mode independently from the app.": "独立于应用自定义终端模式。",
-    "Use your graphics card to draw embedded terminals. Turn it off if you see display problems. Changes apply immediately.": "使用显卡绘制内嵌终端。如果出现显示问题，请关闭此项。更改立即生效。"
+    "Use your graphics card to draw embedded terminals. Turn it off if you see display problems. Changes apply immediately.": "使用显卡绘制内嵌终端。如果出现显示问题，请关闭此项。更改立即生效。",
+    "GitHub Dimmed": "GitHub 暗色",
+    "Fox": "狐狸",
+    "IC Orange PPL": "IC 橙色",
+    "Monochrome": "单色",
+    "Noctis Azureus": "Noctis 蔚蓝",
+    "Notionish": "Notion 风格",
+    "Polychrome": "多彩",
+    "Selene Selenized": "Selene 月华",
+    "Tokyo Night": "东京之夜",
+    "A cup of coffee": "一杯咖啡",
+    "Aurora": "极光",
+    "Base16 Flat": "Base16 扁平",
+    "Base16 Mocha": "Base16 摩卡",
+    "Blue Dolphin": "蓝海豚",
+    "Calm Days, Sober Nights Sky": "静昼沉夜",
+    "Catppuccin Frappé": "Catppuccin 冰沙",
+    "Catppuccin Macchiato": "Catppuccin 玛奇朵",
+    "Catppuccin Mocha": "Catppuccin 摩卡",
+    "Chai": "香料茶",
+    "Desert": "沙漠",
+    "Django Reborn Again": "Django 重生",
+    "Espresso": "浓缩咖啡",
+    "EyeHealth": "护眼",
+    "Garbage Oracle": "垃圾神谕",
+    "Gruvbox Material": "Gruvbox 材质",
+    "Homebrew": "家酿",
+    "Kanso Ink": "简素墨",
+    "Kary Pro Colors": "Kary 专业配色",
+    "Light purple": "浅紫",
+    "Mondrian": "蒙德里安",
+    "Monochrome Stone": "单色石",
+    "Monokai Pro Spectrum": "Monokai Pro 光谱",
+    "Monospace": "等宽",
+    "Noctis Hibernus": "Noctis 寒冬",
+    "Noir Essence": "黑色精粹",
+    "Nord Midnight": "Nord 午夜",
+    "Phonebook": "电话簿",
+    "Rainglow Codecourse": "Rainglow 代码",
+    "Rainglow Crisp": "Rainglow 清爽",
+    "Rainglow Lavender": "Rainglow 薰衣草",
+    "Remedy Tilted": "Remedy 倾斜",
+    "Rosé Pine": "玫瑰松",
+    "Shades of Purple": "紫色渐变",
+    "Soft Color": "柔和色",
+    "Tearout": "撕页",
+    "Tomorrow Night Eighties": "明日之夜 80 年代",
+    "Vaporizer Turquoise": "绿松石蒸汽",
+    "Zenbones Rosebones": "Zenbones 玫瑰骨"
   },
   "announcements": {
     "Standard": "标准",

@@ -7,19 +7,19 @@
       "min": "1.0.0",
       "max": null
     },
-    "createdAt": "2026-11-12T09:53:55.479Z",
+    "createdAt": "2026-11-12T10:10:54.394Z",
     "entryCounts": {
-      "texts": 935,
-      "patterns": 56,
+      "texts": 997,
+      "patterns": 60,
       "attrs": 28,
-      "attrPatterns": 37
+      "attrPatterns": 39
     },
     "payload": {
       "name": "zh-CN-1.6.0.json",
-      "size": 62335,
-      "sha256": "920b0eaa3dd0514ef8ea6ded80965006966710d52401f1a0933442e793e0a3ce"
+      "size": 64957,
+      "sha256": "d708cb358163adf40058323b8c84c4ae742dcaf6adb65679d31736e91642ed25"
     }
   },
-  "signature": "5uk37zrFiwK1tAInEYug++juFYwkmE2jFQoaUCE2FUy3DdxFJy9WTjlH4ous74N+cJg6GKpTUg0GPzML5J5JDA==",
+  "signature": "QGQTDwJi9tm95zVP3hDHMu0sYU6oBOUuX5zwyC7YVI74jLim3Iq73CkRbshF8ycQX7mjkjJ312BhPhkp2p/FCQ==",
   "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA67C6OkEPNaKJy3L5xV/kDTaGkE0l4HhPCU2o9kKd0Vs=\n-----END PUBLIC KEY-----\n"
 }
