@@ -230,22 +230,65 @@ function createTray() {
 }
 
 /** 启动 GitHub Copilot 主程序 */
+/**
+ * 启动 GitHub Copilot 主程序。
+ *
+ * 注意工作目录的选择：
+ *   不要用 path.dirname(exePath) 作为 cwd。
+ *   当上一个 Copilot 进程刚被 taskkill、文件锁尚未完全释放时，
+ *   以该目录为 cwd 启动会抛 EBUSY（目录被占用）。
+ *   改用系统临时目录作为 cwd，避免与 Copilot 自身文件产生锁竞争。
+ *
+ * 同时增加重试：进程刚退出后的极短时间内，shell 层仍可能短暂占用目录。
+ */
 async function launchCopilot() {
   const loc = await locateApp();
   if (!loc.ok) return { ok: false, reason: loc.reason };
 
   const { spawn } = require('child_process');
-  try {
-    const child = spawn(loc.exePath, [], {
-      detached: true,
-      stdio: 'ignore',
-      cwd: path.dirname(loc.exePath),
-    });
-    child.unref();
-    return { ok: true, exePath: loc.exePath };
-  } catch (e) {
-    return { ok: false, reason: e.message };
+  const os = require('os');
+
+  const spawnOnce = () => new Promise((resolve) => {
+    try {
+      const child = spawn(loc.exePath, [], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: os.tmpdir(),      // 关键：不要用 Copilot 安装目录
+        windowsHide: false,
+      });
+      // spawn 的失败是异步的，需要监听 error
+      let settled = false;
+      child.once('error', (err) => {
+        if (!settled) { settled = true; resolve({ ok: false, reason: err.message }); }
+      });
+      child.once('spawn', () => {
+        if (!settled) {
+          settled = true;
+          child.unref();
+          resolve({ ok: true, exePath: loc.exePath });
+        }
+      });
+      // 兜底：1 秒内既没 error 也没 spawn 事件，视为成功
+      setTimeout(() => {
+        if (!settled) { settled = true; child.unref(); resolve({ ok: true, exePath: loc.exePath }); }
+      }, 1000);
+    } catch (e) {
+      resolve({ ok: false, reason: e.message });
+    }
+  });
+
+  // 最多重试 3 次，每次间隔递增，应对文件锁尚未释放的瞬间
+  let last = { ok: false, reason: 'unknown' };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, 600 * attempt));
+    }
+    last = await spawnOnce();
+    if (last.ok) return last;
+    // 只对 EBUSY / EPERM / UNKNOWN 这类瞬时错误重试
+    if (last.reason && !/EBUSY|EPERM|UNKNOWN|resource busy/i.test(last.reason)) break;
   }
+  return last;
 }
 
 /** 立即对当前运行的 Copilot 执行一次注入 */
