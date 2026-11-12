@@ -653,9 +653,152 @@
     "Included": "已包含",
     "Not included": "未包含",
     "Available with": "可用计划：",
-    "Model": "模型"
+    "Model": "模型",
+    "Authored by me": "我创建的",
+    "Assigned to me": "指派给我",
+    "Involves me": "与我相关",
+    "Review requests": "审查请求",
+    "Nothing here": "这里还没有内容",
+    "Created by me": "我创建的",
+    "Mentioning me": "提及我",
+    "Pull requests views": "拉取请求视图",
+    "Issues views": "议题视图",
+    "New view": "新建视图",
+    "Change view (currently list)": "切换视图（当前为列表）",
+    "Additional actions available, press tab to explore.": "还有更多操作，按 Tab 键查看。",
+    "Search or type owner/repo...": "搜索或输入 owner/repo…",
+    "Search or type owner/repo…": "搜索或输入 owner/repo…",
+    "Create new repository": "新建仓库",
+    "Open repository": "打开仓库",
+    "State": "状态",
+    "Add filter": "添加筛选",
+    "Recently updated": "最近更新",
+    "Search...": "搜索…",
+    "Search…": "搜索…",
+    "Sort": "排序",
+    "GitHub Copilot includes these components and their license notices.": "GitHub Copilot 包含以下组件及其许可证声明。"
   },
   "patterns": [
+    [
+      "^MIT License$",
+      "MIT 许可证",
+      ""
+    ],
+    [
+      "^License: (.+)$",
+      "许可证：$1",
+      ""
+    ],
+    [
+      "^(\\d+) canonical indexes are outside automatic repair coverage\\.$",
+      "另有 $1 个标准索引不在自动修复范围内。",
+      ""
+    ],
+    [
+      "^Not verified: .+$",
+      "未验证：CHECK 约束、默认值、外键、触发器、视图、部分索引谓词、表达式索引语义、索引排序规则与方向、有效可空性，或迁移历史。这些有限检查不能证明兼容性。",
+      ""
+    ],
+    [
+      "^Index repair runs only at startup[\\s\\S]*?(\\d+) canonical indexes are outside automatic repair coverage\\.$",
+      "索引修复仅在启动时运行，与迁移分开进行。「重新检查」只会刷新只读诊断信息。另有 $1 个标准索引不在自动修复范围内。",
+      ""
+    ],
+    [
+      "^git version (.+)$",
+      "git 版本 $1",
+      ""
+    ],
+    [
+      "^Index repair runs only at startup, separately from migrations\\. Check again only refreshes read-only diagnostics\\. (\\d+) canonical indexes are outside automatic repair coverage\\.$",
+      "索引修复仅在启动时运行，与迁移分开进行。「重新检查」只会刷新只读诊断信息。另有 $1 个标准索引不在自动修复范围内。",
+      ""
+    ],
+    [
+      "^PID (\\d+) \\(current\\)$",
+      "PID $1（当前）",
+      ""
+    ],
+    [
+      "^(\\d+\\.\\d+\\.\\d+) \\(bundled\\)$",
+      "$1（内置）",
+      ""
+    ],
+    [
+      "^git version (.+) \\(bundled\\)$",
+      "git 版本 $1（内置）",
+      ""
+    ],
+    [
+      "^Copilot binary version: (.+)$",
+      "Copilot 二进制版本：$1",
+      ""
+    ],
+    [
+      "^Copilot binary version: (.+) \\(bundled\\)$",
+      "Copilot 二进制版本：$1（内置）",
+      ""
+    ],
+    [
+      "^OK, (.+)$",
+      "正常，$1",
+      ""
+    ],
+    [
+      "^Version ([\\d.]+) \\(([^)]+)\\)$",
+      "版本 $1（$2）",
+      ""
+    ],
+    [
+      "^(\\d+) open$",
+      "$1 个未关闭",
+      ""
+    ],
+    [
+      "^Copy version, (.+)$",
+      "复制版本：{{1}}",
+      ""
+    ],
+    [
+      "^Copy path, (.+)$",
+      "复制路径：{{1}}",
+      ""
+    ],
+    [
+      "^(.+), AI credits used: (\\d+)%$",
+      "{{1}}，已用 AI 积分：$2%",
+      ""
+    ],
+    [
+      "^(.+)\\. Additional actions available, press tab to explore\\.$",
+      "{{1}}。还有更多操作，按 Tab 键查看。",
+      ""
+    ],
+    [
+      "^Create session from pull requests, branches, or issues in (.+)$",
+      "从 {{1}} 的拉取请求、分支或议题创建会话",
+      ""
+    ],
+    [
+      "^New session in (.+)$",
+      "在 {{1}} 中新建会话",
+      ""
+    ],
+    [
+      "^Open repository (.+)$",
+      "打开仓库 {{1}}",
+      ""
+    ],
+    [
+      "^Filter: (.+)$",
+      "筛选：{{1}}",
+      ""
+    ],
+    [
+      "^No items match \"(.+)\"\\.$",
+      "没有与「{{1}}」匹配的条目。",
+      ""
+    ],
     [
       "^Available on the (.+) plan$",
       "在 $1 计划中可用",
@@ -1622,5 +1765,99 @@
     "Couldn't load environments": "无法加载环境",
     "Refresh to try loading environments again.": "刷新以重新加载环境。",
     "Couldn't check for WSL distributions. Make sure WSL is installed and running. We'll check again automatically.": "无法检查 WSL 发行版。请确保 WSL 已安装并正在运行。我们会自动重新检查。"
+  },
+  "health": {
+    "Copy all": "全部复制",
+    "Share as gist": "以 Gist 分享",
+    "Overview": "概览",
+    "System health checks and status.": "系统健康检查与状态。",
+    "GitHub auth": "GitHub 身份验证",
+    "GitHub authorization is valid.": "GitHub 授权有效。",
+    "Repository storage": "仓库存储",
+    "Writable": "可写",
+    "WebSocket port": "WebSocket 端口",
+    "Authentication": "身份验证",
+    "Checks whether the saved GitHub authentication is still usable.": "检查已保存的 GitHub 身份验证是否仍然可用。",
+    "Status": "状态",
+    "Host": "主机",
+    "Application": "应用",
+    "Checks version, platform, and runtime information.": "检查版本、平台和运行时信息。",
+    "Name": "名称",
+    "Commit SHA": "提交 SHA",
+    "Platform": "平台",
+    "Arch": "架构",
+    "Debug build": "调试版本",
+    "Executable": "可执行文件",
+    "Runtime": "运行时",
+    "Uptime": "运行时长",
+    "Log file": "日志文件",
+    "Remote": "远程",
+    "Versions used to connect to remote environments.": "用于连接远程环境的版本信息。",
+    "AHP client protocol": "AHP 客户端协议",
+    "copilotd version": "copilotd 版本",
+    "Powers agentic coding sessions.": "为智能体编码会话提供支持。",
+    "Found": "已找到",
+    "Source": "来源",
+    "Bundled": "内置",
+    "Bundled version": "内置版本",
+    "Path": "路径",
+    "Variables & PATH": "变量与 PATH",
+    "COPILOT_HOME exists": "COPILOT_HOME 存在",
+    "PATH entries": "PATH 条目数",
+    "Effective PATH entries": "有效 PATH 条目数",
+    "Used for interacting with GitHub.": "用于与 GitHub 交互。",
+    "Meets minimum version": "满足最低版本要求",
+    "Minimum version": "最低版本",
+    "Used for repository operations and worktree management.": "用于仓库操作和工作树管理。",
+    "Resolved via": "解析方式",
+    "embedded": "内嵌",
+    "Storage": "存储",
+    "Repository and worktree storage.": "仓库与工作树存储。",
+    "Repos root": "仓库根目录",
+    "Exists": "是否存在",
+    "Is directory": "是否为目录",
+    "Path length": "路径长度",
+    "Database": "数据库",
+    "SQLite schema version, startup index repair, and read-only checks.": "SQLite 架构版本、启动索引修复与只读检查。",
+    "Schema version": "架构版本",
+    "Latest supported": "最新支持版本",
+    "File": "文件",
+    "Startup index repair": "启动索引修复",
+    "No eligible missing indexes": "没有需要修复的缺失索引",
+    "Index repair runs only at startup, separately from migrations. Check again only refreshes read-only diagnostics. 133 canonical indexes are outside automatic repair coverage.": "索引修复仅在启动时运行，与迁移分开进行。「重新检查」只会刷新只读诊断信息。另有 133 个标准索引不在自动修复范围内。",
+    "No issues found by limited checks": "有限检查未发现问题",
+    "Logs": "日志",
+    "Application log files.": "应用日志文件。",
+    "Run:": "运行：",
+    "Level:": "级别：",
+    "Raw data": "原始数据",
+    "Raw health check response as JSON.": "健康检查的原始 JSON 响应。",
+    "Yes": "是",
+    "No": "否",
+    "OK": "正常",
+    "ok": "正常",
+    "Check again": "重新检查",
+    "Select run": "选择运行实例",
+    "Filter by level": "按级别筛选",
+    "Application logs": "应用日志",
+    "Raw diagnostics JSON": "原始诊断 JSON",
+    "executable": "可执行文件",
+    "runtime log": "运行时日志",
+    "repos root": "仓库根目录",
+    "database file": "数据库文件",
+    "log file": "日志文件",
+    "Type": "类型",
+    "Create manually": "手动创建",
+    "What do you want to automate?": "你想自动化什么？",
+    "Only you can see this automation. AI credits are charged to your user. Actions taken on GitHub use your identity.": "仅你自己可见此自动化。AI 积分记在你的用户名下。在 GitHub 上执行的操作使用你的身份。",
+    "Visible to everyone with access to this repository. AI credits are charged to the repository owner. Actions taken on GitHub use Copilot's identity.": "对该仓库有访问权限的所有人均可见。AI 积分记在仓库所有者名下。在 GitHub 上执行的操作使用 Copilot 的身份。",
+    "Healthy": "健康",
+    "Effective PATH": "有效 PATH",
+    "Unhealthy": "不健康",
+    "Warning": "警告",
+    "OK,": "正常，",
+    "Indexes outside comparison coverage": "索引不在比对覆盖范围内",
+    "Copy raw data": "复制原始数据",
+    "Index repair runs only at startup, separately from migrations. Check again only refreshes read-only diagnostics.": "索引修复仅在启动时运行，与迁移分开进行。「重新检查」只会刷新只读诊断信息。"
   }
 }

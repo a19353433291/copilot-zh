@@ -180,8 +180,8 @@ zh-CN-1.6.0/
     "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 997, "patterns": 60, "attrs": 28, "attrPatterns": 39 },
-    "payload": { "name": "zh-CN-1.6.0.json", "size": 64957, "sha256": "..." }
+    "entryCounts": { "texts": 1110, "patterns": 84, "attrs": 28, "attrPatterns": 39 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 72505, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -222,8 +222,8 @@ zh-CN-1.6.0/
 
 ### 当前覆盖
 
-- **997** 条精确文本
-- **60** 条文本正则
+- **1110** 条精确文本
+- **84** 条文本正则
 - **28** 条属性映射
 - **39** 条属性正则
 
