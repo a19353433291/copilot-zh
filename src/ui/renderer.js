@@ -230,6 +230,10 @@ async function init() {
   await refreshAudit();
   renderApplyState();
 
+  // 初始化汉化页的检测格与流程状态
+  refreshChecks();
+  resetFlow();
+
   switchPage('home');
 
   // 主题分段控件
@@ -353,6 +357,9 @@ function renderWatcher(st) {
     setPill(st.lastError ? 'err' : 'warn', st.lastError ? '需处理' : '注入中');
   }
   if (btnInject) btnInject.hidden = false;
+
+  // 状态变化后同步汉化页的检测格
+  refreshChecks();
 }
 
 /**
@@ -546,8 +553,151 @@ $('btn-choose').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 引擎
+// 汉化页：环境检测 + 流程可视化
 // ---------------------------------------------------------------------------
+
+/**
+ * 刷新汉化页的四个检测格。
+ * 全部来自真实状态（target / watcher / engine status），无假数据。
+ */
+function refreshChecks() {
+  // 1. Copilot 安装
+  const appItem = $('check-app');
+  const appDot = $('check-app-dot');
+  const appVal = $('check-app-value');
+  if (appVal) {
+    if (state.target) {
+      appVal.textContent = 'v' + (state.target.version || '?');
+      if (appItem) appItem.className = 'check-item card ok';
+      if (appDot) appDot.className = 'status-dot ok';
+    } else {
+      appVal.textContent = '未安装';
+      if (appItem) appItem.className = 'check-item card err';
+      if (appDot) appDot.className = 'status-dot err';
+    }
+  }
+
+  // 2. 进程状态（来自 watcher）
+  const procItem = $('check-proc');
+  const procDot = $('check-proc-dot');
+  const procVal = $('check-proc-value');
+  const w = state.watcher;
+  if (procVal) {
+    if (w && w.copilotRunning) {
+      procVal.textContent = w.copilotPid ? `PID ${w.copilotPid}` : '运行中';
+      if (procItem) procItem.className = 'check-item card ok';
+      if (procDot) procDot.className = 'status-dot ok';
+    } else {
+      procVal.textContent = '未运行';
+      if (procItem) procItem.className = 'check-item card';
+      if (procDot) procDot.className = 'status-dot';
+    }
+  }
+
+  // 3. 调试端口（只有已注入才能确认连通）
+  const portItem = $('check-port');
+  const portDot = $('check-port-dot');
+  const portVal = $('check-port-value');
+  if (portVal) {
+    if (w && w.injected) {
+      portVal.textContent = '已连接';
+      if (portItem) portItem.className = 'check-item card ok';
+      if (portDot) portDot.className = 'status-dot ok';
+    } else if (w && w.copilotRunning) {
+      portVal.textContent = '待连接';
+      if (portItem) portItem.className = 'check-item card warn';
+      if (portDot) portDot.className = 'status-dot warn';
+    } else {
+      portVal.textContent = '未启用';
+      if (portItem) portItem.className = 'check-item card';
+      if (portDot) portDot.className = 'status-dot';
+    }
+  }
+
+  // 4. 常驻监控
+  const monItem = $('check-monitor');
+  const monDot = $('check-monitor-dot');
+  const monVal = $('check-monitor-value');
+  if (monVal) {
+    if (w && w.enabled) {
+      monVal.textContent = w.running ? '运行中' : '已开启';
+      if (monItem) monItem.className = 'check-item card ok';
+      if (monDot) monDot.className = 'status-dot ok';
+    } else {
+      monVal.textContent = '已关闭';
+      if (monItem) monItem.className = 'check-item card';
+      if (monDot) monDot.className = 'status-dot';
+    }
+  }
+}
+
+/**
+ * 根据进度百分比映射到 7 个阶段。
+ * 这个映射基于 applyFlow.js 的真实执行顺序：
+ *   5% 检查权限 → 12% 策略 → 30% 连接端口 → 22% 重启 → 60% 等界面 → 70% 注入 → 88% 验证
+ */
+const FLOW_STAGES = [
+  { step: 1, from: 0,   to: 12 },   // 检查 Copilot + 权限
+  { step: 2, from: 12,  to: 30 },   // 写入调试策略
+  { step: 3, from: 30,  to: 36 },   // 检查端口
+  { step: 4, from: 36,  to: 50 },   // 必要时重启
+  { step: 5, from: 50,  to: 70 },   // 等待界面就绪
+  { step: 6, from: 70,  to: 88 },   // 注入翻译
+  { step: 7, from: 88,  to: 101 },  // 验证结果
+];
+
+let flowState = { running: false, currentStep: 0, failed: false };
+
+function resetFlow() {
+  flowState = { running: false, currentStep: 0, failed: false };
+  document.querySelectorAll('.flow-step').forEach(el => {
+    el.classList.remove('active', 'done', 'failed');
+  });
+}
+
+function setFlowStep(step, status) {
+  const el = document.querySelector(`.flow-step[data-step="${step}"]`);
+  if (!el) return;
+  el.classList.remove('active', 'done', 'failed');
+  if (status) el.classList.add(status);
+}
+
+/**
+ * 根据进度推进流程可视化。
+ * @param {number} pct 0-100
+ */
+function advanceFlow(pct) {
+  if (!flowState.running) return;
+
+  // 找到当前阶段
+  let cur = 7;
+  for (const s of FLOW_STAGES) {
+    if (pct < s.to) { cur = s.step; break; }
+  }
+
+  // 之前的阶段标为完成，当前标为进行中
+  for (let i = 1; i <= 7; i++) {
+    if (i < cur) setFlowStep(i, 'done');
+    else if (i === cur) setFlowStep(i, 'active');
+    else setFlowStep(i, '');
+  }
+  flowState.currentStep = cur;
+}
+
+function failFlow() {
+  flowState.running = false;
+  flowState.failed = true;
+  // 当前阶段标红，之前的保持完成
+  for (let i = 1; i <= 7; i++) {
+    if (i < flowState.currentStep) setFlowStep(i, 'done');
+    else if (i === flowState.currentStep) setFlowStep(i, 'failed');
+  }
+}
+
+function completeFlow() {
+  flowState.running = false;
+  for (let i = 1; i <= 7; i++) setFlowStep(i, 'done');
+}
 
 async function loadEngines() {
   state.engines = await window.api.listEngines();
@@ -633,16 +783,10 @@ function selectEngine(id) {
 
 async function loadPack() {
   const r = await window.api.currentPack();
-  const box = $('pack-info');
-  const hint = $('pack-hint');
 
   if (!r.ok) {
     state.pack = null;
-    if (box) {
-      box.className = 'row-desc t-muted';
-      box.textContent = '尚未安装字典包';
-    }
-    if (hint) hint.textContent = '';
+    renderPackEmpty(r.reason);
     updateStats();
     renderApplyState();
     return;
@@ -654,21 +798,103 @@ async function loadPack() {
   renderApplyState();
 }
 
+/** 字典包缺失时的占位渲染 */
+function renderPackEmpty(reason) {
+  const dot = $('dict-dot');
+  if (dot) dot.className = 'status-dot lg err';
+
+  const title = $('dict-title');
+  if (title) title.textContent = '未安装字典包';
+
+  const sub = $('dict-sub');
+  if (sub) sub.textContent = reason || '请导入字典包后才能执行汉化';
+
+  for (const id of ['dict-count-texts', 'dict-count-patterns',
+                    'dict-count-attrs', 'dict-count-attr-patterns']) {
+    const el = $(id);
+    if (el) { el.textContent = '0'; el.className = 'stat-value dim'; }
+  }
+
+  const verifyBadge = $('dict-verify-badge');
+  if (verifyBadge) { verifyBadge.className = 'badge err'; verifyBadge.textContent = '未安装'; }
+
+  for (const [id, val] of [
+    ['dict-version', '—'], ['dict-locale', '—'], ['dict-compat', '—'], ['dict-payload-size', '—'],
+  ]) {
+    const el = $(id);
+    if (el) el.textContent = val;
+  }
+
+  const signBadge = $('dict-sign-badge');
+  if (signBadge) { signBadge.className = 'badge'; signBadge.textContent = '—'; }
+}
+
 function renderPack() {
   const p = state.pack;
-  const box = $('pack-info');
-  const hint = $('pack-hint');
   const m = p.meta || {};
   const c = p.counts || {};
 
-  if (box) {
-    box.className = 'row-desc';
-    box.innerHTML = `v${escapeHtml(m.packVersion || '?')} · ` +
-      `<span class="t-ok">签名与哈希校验通过</span>`;
+  // 顶部概览条
+  const dot = $('dict-dot');
+  if (dot) dot.className = 'status-dot lg ok';
+
+  const title = $('dict-title');
+  if (title) title.textContent = `字典包 v${m.packVersion || '?'} 已就绪`;
+
+  const sub = $('dict-sub');
+  if (sub) {
+    const total = (c.texts || 0) + (c.patterns || 0) + (c.attrs || 0) + (c.attrPatterns || 0);
+    sub.textContent = `共 ${total} 条翻译规则 · 签名与哈希校验通过`;
   }
-  if (hint) {
-    hint.textContent = `${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则 · ` +
-      `${c.attrs || 0} 条属性 · ${c.attrPatterns || 0} 条属性正则`;
+
+  // 四类条目统计（带数字过渡）
+  const counts = [
+    ['dict-count-texts', c.texts],
+    ['dict-count-patterns', c.patterns],
+    ['dict-count-attrs', c.attrs],
+    ['dict-count-attr-patterns', c.attrPatterns],
+  ];
+  for (const [id, n] of counts) {
+    const el = $(id);
+    if (!el) continue;
+    el.className = 'stat-value';
+    animateNumber(el, n || 0);
+  }
+
+  // 校验徽章
+  const verifyBadge = $('dict-verify-badge');
+  if (verifyBadge) {
+    verifyBadge.className = 'badge ok';
+    verifyBadge.textContent = '校验通过';
+  }
+  const signBadge = $('dict-sign-badge');
+  if (signBadge) {
+    signBadge.className = 'badge ok';
+    signBadge.innerHTML = 'Ed25519 通过';
+  }
+
+  // 包信息
+  const setText = (id, text) => {
+    const el = $(id);
+    if (el) el.textContent = text;
+  };
+
+  setText('dict-version', 'v' + (m.packVersion || '?'));
+  setText('dict-locale', m.locale || 'zh-CN');
+
+  const compat = m.appCompat || {};
+  const compatText = (compat.min || compat.max)
+    ? `${compat.min || '不限'} ~ ${compat.max || '不限'}`
+    : '不限版本';
+  setText('dict-compat', compatText);
+
+  if (m.payload && m.payload.size) {
+    const kb = m.payload.size / 1024;
+    setText('dict-payload-size', kb >= 1024
+      ? (kb / 1024).toFixed(1) + ' MB'
+      : kb.toFixed(1) + ' KB');
+  } else {
+    setText('dict-payload-size', '—');
   }
 }
 
@@ -789,7 +1015,25 @@ async function doApply(btnId) {
   setBusy(true, '正在汉化…');
   const btn = $(btnId);
   if (btn) btn.classList.add('is-loading');
+
+  // 启动流程可视化：概览页与汉化页各有一套进度显示
+  resetFlow();
+  flowState.running = true;
+  flowState.currentStep = 1;
+  advanceFlow(0);
+
+  // 如果在汉化页，自动滚动到流程区，让用户能看到阶段推进
+  if (state.page === 'translate') {
+    const flowEl = $('flow-steps');
+    if (flowEl) {
+      requestAnimationFrame(() => {
+        flowEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+    }
+  }
+
   setProgress(0, '准备中…');
+  showTranslateProgress(0, '准备中…');
 
   const target = { exePath: state.target.exePath, version: state.target.version };
   const r = await window.api.apply(state.selectedEngine, target, state.pack.dict);
@@ -799,17 +1043,39 @@ async function doApply(btnId) {
 
   if (r.ok) {
     setProgress(100, '完成');
+    showTranslateProgress(100, '完成');
+    completeFlow();
     const stats = r.stats || {};
     const acts = (r.actions || []).length ? '\n' + r.actions.join('\n') : '';
     showResult('ok',
       `汉化已生效：替换 ${stats.replaced || 0} 处文案${acts}\n\n已验证通过，可以正常使用 GitHub Copilot。`);
     Toast.ok('汉化完成', `替换 ${stats.replaced || 0} 处文案`);
+    // 注入成功后刷新检测状态
+    setTimeout(refreshChecks, 400);
   } else {
     hideProgress();
+    hideTranslateProgress();
+    failFlow();
     let msg = r.reason || '未知原因';
     if (r.code === 'NO_ADMIN') msg += '\n\n请点击右上角「以管理员身份重启」。';
     showResult('err', msg);
   }
+}
+
+/** 汉化页专用进度条（与概览页独立） */
+function showTranslateProgress(pct, msg) {
+  const wrap = $('translate-progress');
+  if (!wrap) return;
+  wrap.hidden = false;
+  const fill = $('translate-progress-fill');
+  if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  const text = $('translate-progress-text');
+  if (text && msg) text.textContent = msg;
+}
+
+function hideTranslateProgress() {
+  const wrap = $('translate-progress');
+  if (wrap) wrap.hidden = true;
 }
 
 $('btn-apply').addEventListener('click', () => doApply('btn-apply'));
@@ -884,36 +1150,97 @@ $('btn-open-packs').addEventListener('click', () => window.api.openPacksFolder()
 async function refreshAudit() {
   const box = $('audit-info');
   if (!box) return;
+
+  // 扫描中状态
+  const dot = $('cleanup-dot');
+  const title = $('cleanup-title');
+  const sub = $('cleanup-sub');
+  const badge = $('cleanup-badge');
+  if (dot) dot.className = 'status-dot lg busy';
+  if (title) title.textContent = '正在扫描…';
+  if (sub) sub.textContent = '检查注册表策略、用户数据、缓存与自启项';
+  if (badge) { badge.className = 'badge'; badge.textContent = '扫描中'; }
+
   box.className = 'audit-box';
   box.textContent = '正在检查…';
 
   const r = await window.api.cleanupAudit();
+
+  // ---- 无残留 ----
   if (!r.total) {
+    if (dot) dot.className = 'status-dot lg ok';
+    if (title) title.textContent = '系统干净';
+    if (sub) sub.textContent = '未发现任何由本工具产生的残留';
+    if (badge) { badge.className = 'badge ok'; badge.textContent = '无残留'; }
+
     box.className = 'audit-box clean';
     box.innerHTML = `${icon('check', 16)}<span>未发现残留，系统干净</span>`;
+
     const btn = $('btn-cleanall');
     if (btn) btn.disabled = true;
+
+    setCleanupCounts({ registry: 0, file: 0, total: 0, locked: 0 });
     return;
   }
+
+  // ---- 有残留 ----
+  if (dot) dot.className = 'status-dot lg warn';
+  if (title) title.textContent = `发现 ${r.total} 项残留`;
+  if (sub) sub.textContent = '可一键清理，被占用的项目会在退出后自动删除';
+  if (badge) { badge.className = 'badge warn'; badge.textContent = '待清理'; }
 
   const btn = $('btn-cleanall');
   if (btn) btn.disabled = false;
 
-  box.className = 'audit-box';
+  // 按类别归并：注册表类 vs 文件类
+  let registryCount = 0;
+  let fileCount = 0;
+  let lockedCount = 0;
+
   const rows = r.traces.map(t => {
+    const isRegistry = t.items.some(i => i.hive || i.value);
+    if (isRegistry) registryCount++;
+    else fileCount++;
+
+    if (t.items.some(i => i.locked)) lockedCount++;
+
     const details = t.items.map(i => {
       if (i.path) {
-        return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}`;
+        const lockedMark = i.locked ? ' <span class="badge warn">占用中</span>' : '';
+        return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}${lockedMark}`;
       }
       if (i.hive) return `${escapeHtml(i.hive)} · ${escapeHtml(i.value)}`;
       return escapeHtml(JSON.stringify(i));
     }).join('<br>');
+
     return `<div class="audit-item">
       <div class="audit-label">${escapeHtml(t.label)}</div>
       <div class="audit-detail">${details}</div>
     </div>`;
   }).join('');
+
   box.innerHTML = `<div class="audit-head">发现 ${r.total} 项残留</div>${rows}`;
+
+  setCleanupCounts({
+    registry: registryCount,
+    file: fileCount,
+    total: r.total,
+    locked: lockedCount,
+  });
+}
+
+/** 更新清理页的四个统计数字 */
+function setCleanupCounts({ registry, file, total, locked }) {
+  const set = (id, n, warn) => {
+    const el = $(id);
+    if (!el) return;
+    el.className = 'stat-value' + (n > 0 ? (warn ? ' warn' : '') : '');
+    animateNumber(el, n);
+  };
+  set('cleanup-count-registry', registry || 0, true);
+  set('cleanup-count-file', file || 0, true);
+  set('cleanup-count-total', total || 0, true);
+  set('cleanup-count-locked', locked || 0, true);
 }
 
 $('btn-audit').addEventListener('click', refreshAudit);
@@ -960,8 +1287,16 @@ $('btn-cleanall').addEventListener('click', async () => {
 // 主进程事件
 // ---------------------------------------------------------------------------
 
-window.api.onProgress(({ pct, msg }) => setProgress(pct, msg));
-window.api.onWatcherStatus((st) => renderWatcher(st));
+window.api.onProgress(({ pct, msg }) => {
+  setProgress(pct, msg);
+  showTranslateProgress(pct, msg);
+  advanceFlow(pct);
+});
+
+window.api.onWatcherStatus((st) => {
+  renderWatcher(st);
+  refreshChecks();
+});
 
 window.api.onWatcherInjected((info) => {
   setStatus(`已自动汉化 Copilot（${info.replaced} 处）`);

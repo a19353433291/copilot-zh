@@ -55,6 +55,30 @@ function isElevatedAsync() {
 }
 
 /**
+ * 异步写入调试端口策略（带缓存失效）。
+ * 与 writePolicy 的区别：不阻塞事件循环。
+ */
+function writePolicyAsync(exeName, value) {
+  return new Promise((resolve) => {
+    isElevatedAsync().then((elevated) => {
+      if (!elevated) {
+        return resolve({ ok: false, reason: '需要管理员权限才能写入调试端口策略' });
+      }
+      const { execFile } = require('child_process');
+      execFile('reg', ['add', POLICY_KEY, '/v', exeName, '/t', 'REG_SZ', '/d', value, '/f'],
+        { encoding: 'utf8', timeout: 10000, windowsHide: true },
+        (err) => {
+          if (err) return resolve({ ok: false, reason: '写入注册表失败: ' + err.message });
+          // 写成功后让读缓存失效，避免后续读到旧值
+          _policyCache = null;
+          _policyAt = 0;
+          resolve({ ok: true });
+        });
+    });
+  });
+}
+
+/**
  * 异步读取调试端口策略（带短缓存）。
  */
 let _policyCache = null;
@@ -624,20 +648,23 @@ class RuntimeInjectEngine extends I18nEngine {
 
     onProgress(5, '检查权限…');
     if (requirePolicy) {
-      if (!isElevated()) {
+      // 用异步版本，避免同步子进程调用阻塞主进程事件循环
+      if (!(await isElevatedAsync())) {
         return { ok: false, reason: '需要管理员权限才能开启调试端口' };
       }
       onProgress(15, '配置调试端口…');
-      const w = writePolicy(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
+      const w = await writePolicyAsync(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
       if (!w.ok) return { ok: false, reason: w.reason };
     } else if (ensurePolicy) {
-      // 监控模式：仅在策略缺失时补写，避免无谓改动
-      const cur = readPolicy(exeName);
+      // 监控 / 一键流程：仅在策略缺失时补写，避免无谓改动
+      // 注意：这里必须用异步版本。applyFlow 已自己写过策略，
+      // 通常此分支不会触发；但一旦触发，同步调用会让主进程卡住数秒。
+      const cur = await readPolicyAsync(exeName);
       if (!cur || !String(cur).includes(`--remote-debugging-port=${DEFAULT_PORT}`)) {
-        if (!isElevated()) {
+        if (!(await isElevatedAsync())) {
           return { ok: false, reason: '调试端口策略缺失，且当前没有管理员权限补写' };
         }
-        const w = writePolicy(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
+        const w = await writePolicyAsync(exeName, `--remote-debugging-port=${DEFAULT_PORT}`);
         if (!w.ok) return { ok: false, reason: w.reason };
       }
     }
@@ -803,6 +830,6 @@ async function isPortReady(port = DEFAULT_PORT) {
 
 module.exports = {
   RuntimeInjectEngine, DEFAULT_PORT, isElevated, isElevatedAsync,
-  readPolicy, readPolicyAsync, writePolicy, removePolicy,
+  readPolicy, readPolicyAsync, writePolicy, writePolicyAsync, removePolicy,
   queryTranslatorAlive, isPortReady, evaluateInPage,
 };

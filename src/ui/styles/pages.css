@@ -358,3 +358,222 @@
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-grid .stat-card:last-child { grid-column: 1 / -1; }
 }
+
+/* ==========================================================================
+   阶段四新增：各页面专用组件
+   ========================================================================== */
+
+/* ---------- 四列统计格 ---------- */
+.stat-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+.stat-note {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  line-height: var(--leading-normal);
+}
+
+/* ---------- 环境检测格 ---------- */
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.check-item {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-standard),
+              background-color var(--dur-fast) var(--ease-standard);
+}
+.check-item:hover { border-color: var(--border-strong); }
+
+.check-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.check-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  transition: color var(--dur-normal) var(--ease-standard),
+              background-color var(--dur-normal) var(--ease-standard);
+}
+.check-icon svg { width: 14px; height: 14px; stroke-width: 1.9; }
+.check-item.ok .check-icon { color: var(--success); background: var(--success-subtle); }
+.check-item.warn .check-icon { color: var(--warning); background: var(--warning-subtle); }
+.check-item.err .check-icon { color: var(--danger); background: var(--danger-subtle); }
+
+.check-title {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-bottom: 3px;
+}
+
+.check-value {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 执行流程可视化 ---------- */
+.flow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.flow-steps::-webkit-scrollbar { display: none; }
+
+.flow-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 76px;
+  text-align: center;
+}
+
+/* 连接线：除最后一个外，每个 step 向右连线 */
+.flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: calc(50% + 12px);
+  right: calc(-50% + 12px);
+  height: 1.5px;
+  background: var(--border);
+  transition: background-color var(--dur-normal) var(--ease-standard);
+}
+
+.flow-marker {
+  position: relative;
+  z-index: 1;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.75px solid var(--border-strong);
+  background: var(--surface-solid);
+  transition:
+    border-color var(--dur-normal) var(--ease-standard),
+    background-color var(--dur-normal) var(--ease-standard),
+    box-shadow var(--dur-normal) var(--ease-standard),
+    transform var(--dur-normal) var(--ease-spring);
+}
+
+.flow-label {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  line-height: 1.35;
+  transition: color var(--dur-normal) var(--ease-standard);
+}
+
+/* 进行中 */
+.flow-step.active .flow-marker {
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-subtle);
+  animation: breathe 1.5s var(--ease-standard) infinite;
+}
+.flow-step.active .flow-label { color: var(--primary); font-weight: var(--font-medium); }
+
+/* 已完成 */
+.flow-step.done .flow-marker {
+  border-color: var(--success);
+  background: var(--success);
+  transform: scale(1);
+}
+.flow-step.done .flow-marker::after {
+  content: '';
+  position: absolute;
+  left: 3.6px;
+  top: 1.2px;
+  width: 3.6px;
+  height: 7px;
+  border: solid #fff;
+  border-width: 0 1.8px 1.8px 0;
+  transform: rotate(45deg);
+}
+.flow-step.done .flow-label { color: var(--text-secondary); }
+.flow-step.done:not(:last-child)::after { background: var(--success); opacity: .5; }
+
+/* 失败 */
+.flow-step.failed .flow-marker {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+.flow-step.failed .flow-marker::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background:
+    linear-gradient(45deg, transparent 42%, #fff 42%, #fff 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, #fff 42%, #fff 58%, transparent 58%);
+}
+.flow-step.failed .flow-label { color: var(--danger); }
+
+/* ---------- 信息列表 ---------- */
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.info-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-subtle);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.info-icon svg { width: 15px; height: 15px; stroke-width: 1.9; }
+
+.info-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.info-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1080px) {
+  .stat-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .check-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .stat-grid-4 { grid-template-columns: 1fr; }
+  .check-grid { grid-template-columns: 1fr; }
+  .flow-steps { gap: var(--space-2); }
+  .flow-step { min-width: 64px; }
+  .flow-step:not(:last-child)::after { display: none; }
+}

@@ -76,8 +76,10 @@ async function applyOneClick(ctx) {
   const actions = [];
 
   // ---- 1. 权限检查 ----
+  // 必须用异步版本：isElevated 内部同步执行 net session（约 1-2 秒），
+  // 会阻塞主进程事件循环，导致界面卡死、CDP 无响应。
   onProgress(5, '检查权限…');
-  if (!cdp.isElevated()) {
+  if (!(await cdp.isElevatedAsync())) {
     return {
       ok: false,
       reason: '需要管理员权限才能开启调试端口。请关闭本程序，右键选择「以管理员身份运行」后重试。',
@@ -89,9 +91,9 @@ async function applyOneClick(ctx) {
   onProgress(12, '配置调试端口…');
   const exeName = 'github.exe';
   const expected = `--remote-debugging-port=${cdp.DEFAULT_PORT}`;
-  const cur = cdp.readPolicy(exeName);
+  const cur = await cdp.readPolicyAsync(exeName);
   if (!cur || !String(cur).includes(expected)) {
-    const w = cdp.writePolicy(exeName, expected);
+    const w = await cdp.writePolicyAsync(exeName, expected);
     if (!w.ok) {
       return { ok: false, reason: '写入调试端口策略失败：' + (w.reason || '未知原因'), code: 'POLICY_WRITE' };
     }
