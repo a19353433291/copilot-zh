@@ -415,11 +415,13 @@
   flex-shrink: 0;
 }
 
-/* 下拉打开时提升祖先层叠（修复被卡片遮挡）
+/* 下拉打开时提升祖先层叠（修复被卡片/面板遮挡）
    --------------------------------------------------------------------------
-   .group 带 overflow:hidden，下拉会被裁切；
-   .card / .group 的 backdrop-filter 会创建堆叠上下文，菜单压不住兄弟节点。
-   两者都需要处理：提升 z-index + 解除 overflow。
+   三个遮挡来源都要处理：
+   1. .group 的 overflow:hidden 会裁切菜单
+   2. .card/.group 的 backdrop-filter 创建堆叠上下文，菜单压不住兄弟节点
+   3. .content-area 的 overflow:hidden（浮起面板需要它来裁圆角）也会裁切菜单
+   所以下拉打开时，把祖先链上所有会裁切/成层的容器都放开。
    -------------------------------------------------------------------------- */
 .card.stack-raised,
 .row.stack-raised,
@@ -428,6 +430,17 @@
   position: relative;
   z-index: var(--z-dropdown);
   overflow: visible;
+}
+
+/* 面板在打开下拉时也要放开裁切（圆角靠子元素自身维持） */
+.content-area.stack-raised {
+  overflow: visible;
+  z-index: var(--z-dropdown);
+}
+/* 放开裁切后，面板的圆角需要由内部元素维持，避免内容溢出直角 */
+.content-area.stack-raised > .pages {
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
 }
 
 .select-trigger {

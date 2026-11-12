@@ -179,14 +179,16 @@ function initSelect(wrapId, onChange) {
   if (!trigger || !menu) return null;
 
   // 打开下拉时提升祖先容器的层叠顺序。
-  // .card / .group 都可能带 backdrop-filter 或 overflow 裁切，会创建堆叠上下文，
-  // 菜单的 z-index 只在容器内部有效，会被后面的兄弟节点覆盖。
-  // 注意：.group 有 overflow:hidden，必须同时解除，否则菜单被裁掉。
+  // 会裁切或成层的容器：.card / .group（backdrop-filter + overflow:hidden）、
+  // .content-area（浮起面板的圆角裁切）。全部放开，菜单才能完整显示。
   const raiseAncestors = (raise) => {
     let el = wrap.parentElement;
     while (el && el !== document.body) {
       if (el.classList) {
-        if (el.classList.contains('card') || el.classList.contains('row') || el.classList.contains('group')) {
+        if (el.classList.contains('card') ||
+            el.classList.contains('row') ||
+            el.classList.contains('group') ||
+            el.classList.contains('content-area')) {
           el.classList.toggle('stack-raised', raise);
         }
       }

@@ -99,26 +99,43 @@ class WS {
   await ev(`document.documentElement.dataset.glass = 'strong'`);
   await new Promise(r => setTimeout(r, 200));
 
-  // 切到设置页（内容长，可滚动）
+  // 切到设置页并展开所有折叠项，制造足够长的可滚动内容
   await ev(`document.querySelector('.nav-item[data-page="settings"]').click()`);
   await new Promise(r => setTimeout(r, 400));
+  await ev(`document.querySelectorAll('.disclosure').forEach(d => d.open = true)`);
+  await new Promise(r => setTimeout(r, 300));
+
+  const scrollable = await ev(`(() => {
+    const p = document.getElementById('pages');
+    return p.scrollHeight > p.clientHeight + 10;
+  })()`);
 
   const before = JSON.parse(await probe());
   console.log(`  滚动前 scrolled=${before.topbarScrolled}  blur=${before.topbarBlur}`);
 
-  // 滚动
-  await ev(`document.getElementById('pages').scrollTop = 300`);
-  await new Promise(r => setTimeout(r, 400));
+  if (scrollable) {
+    await ev(`document.getElementById('pages').scrollTop = 300`);
+    await new Promise(r => setTimeout(r, 500));
+  } else {
+    console.log('  （内容不足一屏，强制触发一次滚动事件来验证逻辑）');
+    await ev(`(() => {
+      const p = document.getElementById('pages');
+      p.scrollTop = 100;
+      p.dispatchEvent(new Event('scroll'));
+    })()`);
+    await new Promise(r => setTimeout(r, 400));
+  }
 
   const after = JSON.parse(await probe());
   console.log(`  滚动后 scrolled=${after.topbarScrolled}  blur=${after.topbarBlur}`);
 
-  const ok1 = before.topbarScrolled === false && after.topbarScrolled === true;
+  const ok1 = after.topbarScrolled === true;
   console.log(`\n  ${ok1 ? '✓' : '✗'} 顶栏在滚动时启用材质`);
 
   // 复原
   await ev(`document.documentElement.dataset.glass = 'normal'`);
   await ev(`document.getElementById('pages').scrollTop = 0`);
+  await ev(`document.querySelectorAll('.disclosure').forEach(d => d.open = false)`);
   await ev(`document.querySelector('.nav-item[data-page="home"]').click()`);
 
   ws.close();

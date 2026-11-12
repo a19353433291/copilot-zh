@@ -75,7 +75,9 @@
 
   /* ---------- 布局尺寸 ---------- */
   --sidebar-w:      220px;
-  --topbar-h:       52px;
+  /* 原生窗口控制按钮占用的高度（与 titleBarOverlay.height 一致） */
+  --titlebar-h:     40px;
+  --topbar-h:       48px;
   --statusbar-h:    28px;
   /* 左右内边距：从 32px 提到 40px，给内容更多呼吸空间 */
   --page-padding-x: 40px;

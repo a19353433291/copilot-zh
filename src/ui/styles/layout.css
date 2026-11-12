@@ -1,10 +1,18 @@
 /* ==========================================================================
-   Layout — 应用外壳
+   Layout — 应用外壳（无边框窗口 + 浮动页面）
    --------------------------------------------------------------------------
-   参考 macOS System Settings 的结构：
-     - 侧边栏与内容区同色系，靠一条细分割线区分，不用阴影
-     - 顶栏不做独立容器感，只是内容区上方的一条带标题的窄条
-     - 状态栏极简，字号最小，颜色最淡
+   布局结构（对齐 Qoder）：
+   ┌──────────┬─────────────────────────────────┐
+   │          │ ╭─────────────────────────────╮ │
+   │  侧边栏   │ │  页面（浮起的面板）            │ │
+   │  （顶到   │ │  内含顶部标题栏 + 内容        │ │
+   │   窗口顶） │ ╰─────────────────────────────╯ │
+   └──────────┴─────────────────────────────────┘
+
+   关键差异：
+   - 侧边栏从窗口最顶端开始，与 Windows 控制按钮同处一层
+   - 右侧内容区不再是整块，而是一个带圆角、有边距的浮起面板
+   - 面板周围是 --app-bg 背景色，形成「页面浮在背景上」的层次
    ========================================================================== */
 
 .app {
@@ -12,18 +20,39 @@
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100vh;
   background: var(--app-bg);
+  /* 整个窗口顶部留出原生控制按钮的高度 */
+  padding-top: var(--titlebar-h);
+  position: relative;
 }
 
-/* ---------- 侧边栏 ---------- */
+/* 顶部拖拽区：覆盖窗口最上方一条，让用户能拖动窗口。
+   右侧留出原生控制按钮的位置，不遮挡点击。 */
+.titlebar-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 140px;
+  height: var(--titlebar-h);
+  z-index: 5;
+  -webkit-app-region: drag;
+  pointer-events: none;                /* 不拦截点击，只提供拖拽 */
+}
+
+/* ---------- 侧边栏 ----------
+   从窗口最顶端开始，与原生控制按钮同处一条水平线。
+   顶部品牌区需要留出拖拽空间。 */
 .sidebar {
   display: flex;
   flex-direction: column;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--divider);
+  border-right: none;              /* 不再需要竖线，浮起面板自己形成边界 */
   -webkit-app-region: drag;
   transition: background-color var(--dur-normal) var(--ease-standard);
   position: relative;
   z-index: var(--z-sticky);
+  /* 抵消 .app 的 padding-top，让侧边栏顶到窗口最上沿 */
+  margin-top: calc(-1 * var(--titlebar-h));
+  padding-top: var(--titlebar-h);
 }
 
 /* 侧边栏玻璃
@@ -188,15 +217,33 @@
   text-overflow: ellipsis;
 }
 
-/* ---------- 主区域 ---------- */
+/* ---------- 主区域：浮起的页面面板 ---------- */
 .content-area {
   display: grid;
   grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
   min-width: 0;
   min-height: 0;
+  /* 浮起面板：四周留出背景色，形成完整的浮动感。
+     顶部留 2px 是因为 .app 已经有 titlebar-h 的 padding，
+     这里再加一点让圆角完整显示。 */
+  margin: 2px var(--space-3) var(--space-3) 0;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition:
+    background-color var(--dur-normal) var(--ease-standard),
+    border-color var(--dur-normal) var(--ease-standard);
+  /* 关键：让面板顶部与标题栏底部对齐，圆角不被裁切 */
+  position: relative;
 }
 
-/* 顶栏：细窄，只有标题与必要操作 */
+:root[data-theme="dark"] .content-area {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+/* 顶栏：面板内部的标题条，与面板同色 */
 .topbar {
   display: flex;
   align-items: center;
@@ -204,15 +251,14 @@
   gap: var(--space-4);
   padding: 0 var(--page-padding-x);
   border-bottom: 1px solid var(--divider);
-  background: var(--app-bg);
+  background: transparent;
   -webkit-app-region: drag;
   transition: background-color var(--dur-normal) var(--ease-standard);
 }
 
-/* 内容滚动时顶栏才显出材质，避免静态时也有模糊层 */
+/* 内容滚动时顶栏才显出材质 */
 .topbar.scrolled {
   background: var(--header-bg);
-  border-bottom-color: var(--divider);
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -222,7 +268,7 @@
   }
 }
 :root[data-glass="off"] .topbar.scrolled {
-  background: var(--app-bg);
+  background: var(--surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -269,7 +315,7 @@
   gap: var(--space-8);
 }
 
-/* 状态栏 */
+/* 状态栏：面板内部的底部细条 */
 .statusbar {
   display: flex;
   align-items: center;
@@ -277,7 +323,7 @@
   gap: var(--space-4);
   padding: 0 var(--page-padding-x);
   border-top: 1px solid var(--divider);
-  background: var(--statusbar-bg);
+  background: transparent;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   transition: background-color var(--dur-normal) var(--ease-standard);

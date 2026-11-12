@@ -98,13 +98,26 @@ function applyNativeTheme(theme) {
     nativeTheme.themeSource = source;
   } catch (e) { /* 忽略，不影响功能 */ }
 
-  // 同步窗口背景色，避免加载瞬间闪白/闪黑
+  const dark = source === 'dark' ||
+    (source === 'system' && nativeTheme.shouldUseDarkColors);
+
   if (mainWindow && !mainWindow.isDestroyed()) {
-    const dark = source === 'dark' ||
-      (source === 'system' && nativeTheme.shouldUseDarkColors);
+    // 窗口背景色：与页面底色一致，避免加载瞬间闪色
     try {
-      mainWindow.setBackgroundColor(dark ? '#101522' : '#F4F6FB');
+      mainWindow.setBackgroundColor(dark ? '#1C1C1E' : '#F6F6F6');
     } catch (e) { /* ignore */ }
+
+    // 原生控制按钮浮层：背景色与符号色跟随主题
+    try {
+      const api = mainWindow.setTitleBarOverlay || mainWindow.setTitleBarOverlay;
+      if (typeof api === 'function') {
+        api.call(mainWindow, {
+          color: dark ? '#1C1C1E' : '#F6F6F6',
+          symbolColor: dark ? '#F5F5F7' : '#35353A',
+          height: 40,
+        });
+      }
+    } catch (e) { /* 旧版本 Electron 可能不支持运行时更新 */ }
   }
 }
 
@@ -122,9 +135,24 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     title: PRODUCT_NAME + ' — GitHub Copilot 汉化工具',
-    // 背景色随主题：深色用 #101522，浅色用 #F4F6FB
-    backgroundColor: useDark ? '#101522' : '#F4F6FB',
+    backgroundColor: useDark ? '#1C1C1E' : '#F6F6F6',
     show: false,
+    /* ------------------------------------------------------------------
+       无边框窗口 + 原生控制按钮浮层
+       ------------------------------------------------------------------
+       titleBarStyle: 'hidden' 隐藏系统标题栏，页面内容可延伸到窗口顶部；
+       titleBarOverlay 保留 Windows 的最小化/最大化/关闭按钮，
+       并让它们浮在页面右上角，颜色跟随主题。
+
+       效果：侧边栏直接顶到窗口边缘，和 Windows 控制栏融为一体，
+       右侧内容区像一个浮在背景上的页面 —— 与 Qoder 的布局一致。
+       ------------------------------------------------------------------ */
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: useDark ? '#1C1C1E' : '#F6F6F6',
+      symbolColor: useDark ? '#F5F5F7' : '#35353A',
+      height: 40,
+    },
     // 窗口图标（任务栏显示）
     icon: (() => {
       const fs2 = require('fs');
