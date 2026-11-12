@@ -4,10 +4,15 @@ package-lock.json
 
 # 构建产物
 dist/
+# 中间产物：从 translations.json 重新生成的字典包目录
 dist-packs/
-bundled-packs/
 
-# 注意：build/ 下的图标文件（icon*.png / icon.ico / tray*.png）必须提交，
+# 注意：bundled-packs/ 必须提交！
+# 它是签名后的字典包，安装包构建时通过 extraResources 直接复制进产物。
+# 若不提交，别人 clone 仓库后无法构建出可用的安装包（缺少内置字典）。
+# 签名密钥本身仍然不提交（见下方 *.pem），所以别人无法伪造新包。
+
+# build/ 下的图标文件（icon*.png / icon.ico / tray*.png）必须提交，
 # 它们是构建安装包与运行时窗口/托盘图标的必需资源。
 # 仅排除自动生成的临时预览图。
 build/_*.png

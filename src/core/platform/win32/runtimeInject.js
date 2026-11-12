@@ -486,7 +486,9 @@ function buildTranslatorSource(dict) {
     const sel = allowTextContainers
       ? '[aria-hidden="true"], h1, h2, h3, h4, span, p'
       : 'h1 [aria-hidden="true"], h2 [aria-hidden="true"], h3 [aria-hidden="true"], h4 [aria-hidden="true"]';
-    const cands = root.querySelectorAll(sel);
+    const cands = [];
+    try { if (root.matches && root.matches(sel)) cands.push(root); } catch (e) { /* ignore */ }
+    for (const el of root.querySelectorAll(sel)) cands.push(el);
     let budget = 400;
     for (const el of cands) {
       if (--budget < 0) break;
@@ -498,7 +500,7 @@ function buildTranslatorSource(dict) {
       let count = 0;
       for (const d of el.querySelectorAll('*')) {
         count++;
-        if (count > 12 || COMPOSITE_SKIP.test(d.tagName)) { ok = false; break; }
+        if (count > 24 || COMPOSITE_SKIP.test(d.tagName)) { ok = false; break; }
       }
       if (!ok) continue;
       const t = quick;

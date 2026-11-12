@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
 [![Electron](https://img.shields.io/badge/Electron-38-47848F?logo=electron)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.8.0-success)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-0.10.0-success)](https://github.com/)
 
 > 为 **GitHub Copilot 桌面版** 提供简体中文界面的 Windows 工具。
 > 不修改应用本体，数字签名保持完好，一次配置后随 Copilot 启动自动汉化。
@@ -50,7 +50,7 @@ GitHub Copilot 桌面版（Tauri + WebView2 架构）目前没有内置中文界
 ## 系统要求
 
 - **Windows 10 / 11**（x64）
-- [GitHub Copilot 桌面版](https://github.com/features/copilot) 已安装（测试版本 v1.2.0）
+- [GitHub Copilot 桌面版](https://github.com/features/copilot) 已安装（测试版本 v1.3.0）
 - WebView2 Runtime（Windows 11 已内置）
 - **管理员权限**：写入 WebView2 调试策略需要 HKLM 权限
 
@@ -151,7 +151,7 @@ GitHub Copilot 桌面版使用 **Tauri + WebView2** 构建，界面是运行在 
 
 **关键技术点**（均为实测结论）：
 
-- Copilot v1.2.0 会忽略环境变量 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`，**必须写注册表策略**：
+- Copilot v1.3.0 会忽略环境变量 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`，**必须写注册表策略**：
   ```
   HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments
     github.exe = --remote-debugging-port=9222
@@ -167,9 +167,9 @@ GitHub Copilot 桌面版使用 **Tauri + WebView2** 构建，界面是运行在 
 ### 结构
 
 ```
-zh-CN-1.5.0/
+zh-CN-1.6.0/
 ├── manifest.json         含 ed25519 签名与载荷哈希
-└── zh-CN-1.5.0.json      翻译内容
+└── zh-CN-1.6.0.json      翻译内容
 ```
 
 `manifest.json`：
@@ -177,11 +177,11 @@ zh-CN-1.5.0/
 ```json
 {
   "manifest": {
-    "packVersion": "1.5.0",
+    "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 512, "patterns": 46, "attrs": 28, "attrPatterns": 26 },
-    "payload": { "name": "zh-CN-1.5.0.json", "size": 27808, "sha256": "..." }
+    "entryCounts": { "texts": 926, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 61803, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -212,19 +212,27 @@ zh-CN-1.5.0/
 | `attrs` | 精确匹配 `placeholder` / `title` / `aria-label` / `alt` |
 | `attrPatterns` | 正则匹配属性值 |
 
+替换串里可用 `{{n}}` 引用第 n 个捕获组，并自动再查一次 `texts` 词典。用于组合型文案：
+
+```json
+["^Edit shortcut for (.+)$", "编辑「{{1}}」的快捷键", ""]
+```
+
+`Edit shortcut for New tab` → `编辑「新建标签页」的快捷键`（`New tab` 由 `texts` 提供译文）。
+
 ### 当前覆盖
 
-- **512** 条精确文本
-- **46** 条文本正则
+- **926** 条精确文本
+- **56** 条文本正则
 - **28** 条属性映射
-- **26** 条属性正则
+- **37** 条属性正则
 
-主界面与设置页实测覆盖率 **97.2%**（73 条可翻译文案中 69 条已中文化）。
+基于 Copilot v1.3.0 的全量界面巡检（主界面、侧边栏各页、设置全部子页、用户菜单、命令面板、公告面板、关于页），除主题/调色板名称、品牌名、快捷键与代码标识符外，界面文案已全部中文化。
 
 ### 构建字典包
 
 ```bash
-node scripts/build-pack.js --version 1.5.0
+node scripts/build-pack.js --version 1.6.0
 ```
 
 该脚本读取 `src/core/dict/translations.json`（按主题分组的词库），展开为运行时结构并签名输出到 `dist-packs/`。
@@ -356,8 +364,9 @@ class MyEngine extends I18nEngine {
 
 ## 已知限制
 
-- 仅在 Windows 10/11 上验证（Copilot v1.2.0）
+- 仅在 Windows 10/11 上验证（Copilot v1.3.0）
 - 字典覆盖有限，未收录的文案保持英文
+- 输入框内自动填入的提示词保持英文：为避免改动将要发送给 Copilot 的内容，编辑区不做翻译
 - 图标与图片内的文字无法翻译
 - AI 回复、代码块、用户名、会话标题不会被翻译（有意为之）
 - 安装包未做代码签名，首次运行会有 SmartScreen 提示

@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
 [![Electron](https://img.shields.io/badge/Electron-38-47848F?logo=electron)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.8.0-success)](https://github.com/)
+[![Version](https://img.shields.io/badge/version-0.10.0-success)](https://github.com/)
 
 > A Windows tool that provides a **Simplified Chinese interface** for the **GitHub Copilot desktop app**.
 > It does not modify the application itself, keeps its digital signature intact, and localizes automatically once configured.
@@ -50,7 +50,7 @@ Translations are distributed as **independently signed dictionary packs**, decou
 ## Requirements
 
 - **Windows 10 / 11** (x64)
-- [GitHub Copilot desktop app](https://github.com/features/copilot) installed (tested with v1.2.0)
+- [GitHub Copilot desktop app](https://github.com/features/copilot) installed (tested with v1.3.0)
 - WebView2 Runtime (bundled with Windows 11)
 - **Administrator privileges** — writing the WebView2 debug policy requires HKLM access
 
@@ -152,7 +152,7 @@ The GitHub Copilot desktop app is built with **Tauri + WebView2**; its UI is a R
 
 **Key findings** (all empirically verified):
 
-- Copilot v1.2.0 ignores the `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` environment variable — a **registry policy is required**:
+- Copilot v1.3.0 ignores the `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` environment variable — a **registry policy is required**:
   ```
   HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments
     github.exe = --remote-debugging-port=9222
@@ -168,9 +168,9 @@ The GitHub Copilot desktop app is built with **Tauri + WebView2**; its UI is a R
 ### Structure
 
 ```
-zh-CN-1.5.0/
+zh-CN-1.6.0/
 ├── manifest.json         ed25519 signature + payload hash
-└── zh-CN-1.5.0.json      translation content
+└── zh-CN-1.6.0.json      translation content
 ```
 
 `manifest.json`:
@@ -178,11 +178,11 @@ zh-CN-1.5.0/
 ```json
 {
   "manifest": {
-    "packVersion": "1.5.0",
+    "packVersion": "1.6.0",
     "locale": "zh-CN",
     "appCompat": { "min": "1.0.0", "max": null },
-    "entryCounts": { "texts": 512, "patterns": 46, "attrs": 28, "attrPatterns": 26 },
-    "payload": { "name": "zh-CN-1.5.0.json", "size": 27808, "sha256": "..." }
+    "entryCounts": { "texts": 926, "patterns": 56, "attrs": 28, "attrPatterns": 37 },
+    "payload": { "name": "zh-CN-1.6.0.json", "size": 61803, "sha256": "..." }
   },
   "signature": "<base64>",
   "pubkey": "<PEM>"
@@ -215,17 +215,17 @@ Four matching strategies:
 
 ### Current coverage
 
-- **512** exact text entries
-- **46** text regex rules
+- **926** exact text entries
+- **56** text regex rules
 - **28** attribute mappings
-- **26** attribute regex rules
+- **37** attribute regex rules
 
-Measured coverage on the main window and settings page: **97.2%** (69 of 73 translatable strings).
+Full UI sweep against Copilot v1.3.0 (main window, sidebar pages, all settings tabs, user menu, command palette, announcements, About): every UI string is localized except theme/palette names, brand names, shortcuts and code identifiers.
 
 ### Building a pack
 
 ```bash
-node scripts/build-pack.js --version 1.5.0
+node scripts/build-pack.js --version 1.6.0
 ```
 
 The script reads `src/core/dict/translations.json` (a topic-grouped word list), expands it into the runtime structure, signs it, and writes to `dist-packs/`.
@@ -357,8 +357,9 @@ The **Cleanup** page provides residue auditing and one-click cleanup:
 
 ## Known Limitations
 
-- Verified only on Windows 10/11 (Copilot v1.2.0)
+- Verified only on Windows 10/11 (Copilot v1.3.0)
 - Dictionary coverage is limited; unlisted strings remain in English
+- Prompt text auto-filled into the composer stays in English: the editor is intentionally left untouched so what you send to Copilot is never altered
 - Text inside icons and images cannot be translated
 - AI replies, code blocks, usernames, and session titles are intentionally not translated
 - The installer is not code-signed; SmartScreen may warn on first run

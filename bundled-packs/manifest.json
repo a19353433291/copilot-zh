@@ -1,0 +1,25 @@
+{
+  "manifest": {
+    "packVersion": "1.6.0",
+    "locale": "zh-CN",
+    "schema": 1,
+    "appCompat": {
+      "min": "1.0.0",
+      "max": null
+    },
+    "createdAt": "2026-11-12T09:31:44.258Z",
+    "entryCounts": {
+      "texts": 926,
+      "patterns": 56,
+      "attrs": 28,
+      "attrPatterns": 37
+    },
+    "payload": {
+      "name": "zh-CN-1.6.0.json",
+      "size": 61803,
+      "sha256": "c8454e9482505bb320473aa8bafbb048ea46aefe67fbc46ed23afd7a937a2b57"
+    }
+  },
+  "signature": "8FN+ThoaiXEZCLB6uxclx1I4j1jLNonFT/o64cK+CEFKqN45QkWnja8uCDhBl72glorDDWELPVhczeoSDVLlCQ==",
+  "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA67C6OkEPNaKJy3L5xV/kDTaGkE0l4HhPCU2o9kKd0Vs=\n-----END PUBLIC KEY-----\n"
+}

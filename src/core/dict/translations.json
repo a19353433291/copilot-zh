@@ -616,9 +616,34 @@
     "Agent-driven workflow interfaces.": "智能体驱动的工作流界面。",
     "External tools and data for agents.": "智能体使用的外部工具和数据。",
     "Preconfigured Copilot capabilities.": "预配置的 Copilot 能力。",
-    "Extensions from plugins or direct installs.": "来自插件或直接安装的扩展。"
+    "Extensions from plugins or direct installs.": "来自插件或直接安装的扩展。",
+    "Refreshing…": "正在刷新…",
+    "MCP servers": "MCP 服务器",
+    "Loading plugins from": "正在从以下位置加载插件",
+    "About GitHub Copilot": "关于 GitHub Copilot",
+    "License and Open Source Notices": "许可证与开源声明",
+    "© GitHub, Inc. All rights reserved.": "© GitHub, Inc. 保留所有权利。",
+    "Search recent prompts": "搜索最近的提示词",
+    "CLI commands finish running": "CLI 命令运行结束",
+    "CLI commands finish running announcements": "CLI 命令运行结束播报",
+    "Azure DevOps integration": "Azure DevOps 集成",
+    "Connect to app tools through Composio.": "通过 Composio 连接应用工具。",
+    "Search for, add and manage MCP servers, Skills and plugins from GitHub in Customize.": "在「自定义」中搜索、添加和管理来自 GitHub 的 MCP 服务器、技能与插件。",
+    "Connect supported companion devices to navigate sessions, use voice input, and control integrations.": "连接支持的伴侣设备，用于导航会话、语音输入和控制集成。",
+    "GitHub Copilot app": "GitHub Copilot 应用",
+    "Testing connection": "正在测试连接",
+    "Question mark": "问号",
+    "Left bracket": "左方括号",
+    "Right bracket": "右方括号",
+    "Left Arrow": "左方向键",
+    "Right Arrow": "右方向键"
   },
   "patterns": [
+    [
+      "^Version ([\\d.]+)$",
+      "版本 $1",
+      ""
+    ],
     [
       "^Edit shortcut for (.+)$",
       "编辑「{{1}}」的快捷键",
@@ -926,6 +951,61 @@
     "Sticky note": "便签"
   },
   "attrPatterns": [
+    [
+      "^Keyboard shortcuts, (.+)$",
+      "键盘快捷键，{{1}}",
+      ""
+    ],
+    [
+      "^Testing connection, (.+)$",
+      "正在测试连接：{{1}}",
+      ""
+    ],
+    [
+      "^Search keyboard shortcuts$",
+      "搜索键盘快捷键",
+      ""
+    ],
+    [
+      "^Search palettes$",
+      "搜索调色板",
+      ""
+    ],
+    [
+      "^Search commands…$",
+      "搜索命令…",
+      ""
+    ],
+    [
+      "^Search settings$",
+      "搜索设置",
+      ""
+    ],
+    [
+      "^Search settings…$",
+      "搜索设置…",
+      ""
+    ],
+    [
+      "^Search installed…$",
+      "搜索已安装项…",
+      ""
+    ],
+    [
+      "^Search installed integrations$",
+      "搜索已安装的集成",
+      ""
+    ],
+    [
+      "^Search (\\d+) palettes…$",
+      "搜索 $1 个调色板…",
+      ""
+    ],
+    [
+      "^Connect (.+)$",
+      "连接 {{1}}",
+      ""
+    ],
     [
       "^Mode: (.+), Ctrl \\+ Shift \\+ ([A-Z])$",
       "模式：{{1}}, Ctrl + Shift + $2",
@@ -1386,7 +1466,14 @@
     "Sign in to Vercel, Cloudflare, Sentry, and more, then use them anywhere you use Copilot: the app, CLI, VS Code, github.com, and code review.": "登录 Vercel、Cloudflare、Sentry 等服务后，即可在任何使用 Copilot 的地方使用它们：应用、CLI、VS Code、github.com 和代码审查。",
     "Start a cloud session or connect to one running on your desktop, then follow progress, send prompts, and steer Copilot's work from any device.": "启动云会话，或连接桌面端正在运行的会话，然后在任意设备上跟踪进度、发送提示词，并引导 Copilot 的工作。",
     "Create images directly in your conversation with Copilot. Start with a description or add a reference image for inspiration, then refine the result without leaving your session.": "直接在 Copilot 对话中创建图像。可以先写描述，或添加参考图激发灵感，然后无需离开会话即可优化结果。",
-    "Copilot Projects keep goals, context, sessions, and results together, coordinating parallel work across one or more repositories so you can track progress and direct what happens next.": "Copilot 项目把目标、上下文、会话和成果集中在一起，协调跨一个或多个仓库的并行工作，让你能跟踪进度并决定下一步。"
+    "Copilot Projects keep goals, context, sessions, and results together, coordinating parallel work across one or more repositories so you can track progress and direct what happens next.": "Copilot 项目把目标、上下文、会话和成果集中在一起，协调跨一个或多个仓库的并行工作，让你能跟踪进度并决定下一步。",
+    "Turn a goal into coordinated work.": "把目标转化为协同工作。",
+    "Keep work moving automatically.": "让工作自动推进。",
+    "Connect your tools once, use them everywhere.": "一次连接你的工具，随处可用。",
+    "Keep work moving from anywhere.": "随时随地推进工作。",
+    "Create and refine images in Copilot.": "在 Copilot 中创建并优化图像。",
+    "Choose the effort. Copilot handles the models..": "选择投入等级，模型交给 Copilot 决定。",
+    "Explore what’s new in GitHub Copilot app.": "探索 GitHub Copilot 应用的新功能。"
   },
   "account": {
     "AI credits": "AI 积分",
