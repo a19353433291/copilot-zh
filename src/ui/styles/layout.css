@@ -135,6 +135,9 @@
      所以侧边栏需要把内容往下推，避免导航项被标题栏压住。 */
   margin-top: calc(-1 * var(--titlebar-h));
   padding-top: var(--titlebar-h);
+  /* 底部留出与浮起面板相同的间距（--space-3 = 12px），
+     让 sidebar-foot 的上边框与右侧 statusbar 的上边框落在同一水平线 */
+  padding-bottom: var(--space-3);
 }
 
 /* 侧边栏玻璃
@@ -230,12 +233,25 @@
   outline-offset: -2px;
 }
 
-/* 底部状态：与导航区分离 */
+/* 底部状态：与右侧状态栏严格对齐
+   --------------------------------------------------------------------------
+   侧边栏底部与 .statusbar 是两条独立的横线，必须落在同一水平位置。
+   之前差 13px 的原因：
+     .content-area 有 margin-bottom: 12px（浮起面板的底边距），
+     而 .sidebar 没有，于是状态栏被推高了 12px（再 +1px 边框 = 13px）。
+   解法：给侧边栏相同的底部间距，两条线自然对齐。 */
 .sidebar-foot {
-  padding: 10px 14px 14px;
+  height: var(--statusbar-h);
+  min-height: var(--statusbar-h);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
   border-top: 1px solid var(--divider);
   -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
+
 
 .sidebar-status {
   display: flex;

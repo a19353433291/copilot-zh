@@ -197,6 +197,12 @@ function createWindow() {
 }
 
 /** 托盘气泡提示 */
+/** 把 "owner/repo" 拆成 { owner, repo } */
+function splitRepo(s) {
+  const parts = String(s || '').split('/');
+  return { owner: parts[0] || '', repo: parts[1] || '' };
+}
+
 function notifyTray(text) {
   if (tray && tray.displayBalloon) {
     try { tray.displayBalloon({ title: PRODUCT_NAME, content: text }); } catch (e) { /* ignore */ }
@@ -801,8 +807,40 @@ function installPackFrom(srcDir) {
 }
 
 ipcMain.handle('pack:checkUpdate', async () => {
-  // 在线更新预留：后续接入更新源
-  return { ok: false, reason: '在线更新尚未配置源地址', notConfigured: true };
+  // 字典包在线更新：从同一个 Release 里查找 packs-zh-CN-<版本>.zip
+  try {
+    const { PackUpdater } = require('../src/core/update/packUpdater');
+
+    // 读当前已安装的字典包版本
+    let currentMeta = null;
+    try {
+      const cur = path.join(PACKS_DIR, 'current', 'manifest.json');
+      if (fs.existsSync(cur)) {
+        const m = JSON.parse(fs.readFileSync(cur, 'utf8'));
+        currentMeta = m.manifest || null;
+      }
+    } catch (e) { /* 忽略，视为未安装 */ }
+
+    const cfg = {
+      source: settings.get('updateSource'),
+      github: splitRepo(settings.get('updateGithubRepo')),
+      gitee: splitRepo(settings.get('updateGiteeRepo')),
+      generic: { baseUrl: settings.get('updateCustomUrl') || '' },
+    };
+
+    const pu = new PackUpdater({
+      config: cfg,
+      currentPack: currentMeta,
+      downloadDir: path.join(app.getPath('temp'), 'copilot-zh-pack-update'),
+      onLog: () => {},
+    });
+
+    const r = await pu.check();
+    pu.cleanup();
+    return r;
+  } catch (e) {
+    return { ok: false, reason: '检查字典包更新失败：' + e.message };
+  }
 });
 
 ipcMain.handle('pack:openFolder', async () => {

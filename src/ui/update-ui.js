@@ -203,12 +203,13 @@ const UpdateUI = (() => {
   }
 
   async function doInstall() {
-    const ok = confirm(
-      '即将安装新版本。\n\n' +
-      '应用会自动退出并启动安装程序。\n' +
-      '安装完成后可重新打开使用。\n\n' +
-      '确定继续吗？'
-    );
+    const ok = await Dialog.confirm({
+      title: '即将安装新版本',
+      message: '应用会自动退出并启动安装程序。',
+      note: '安装完成后可重新打开使用。',
+      confirmText: '立即安装',
+      cancelText: '取消',
+    });
     if (!ok) return;
 
     busy = true;
@@ -222,7 +223,13 @@ const UpdateUI = (() => {
   }
 
   async function doCancel() {
-    const ok = confirm('取消下载并删除已下载的安装包？');
+    const ok = await Dialog.confirm({
+      title: '取消下载？',
+      message: '已下载的安装包会被删除，需要重新下载。',
+      confirmText: '取消下载',
+      cancelText: '继续下载',
+      danger: true,
+    });
     if (!ok) return;
     await window.api.updateCancel();
     const st = await window.api.updateStatus();

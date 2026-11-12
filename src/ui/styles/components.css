@@ -330,7 +330,14 @@
 .status-dot.lg   { width: 9px; height: 9px; }
 
 /* ==========================================================================
-   6. Toggle（Apple 风格开关）
+   Toggle（Apple 风格开关）
+   --------------------------------------------------------------------------
+   关键：input 是真正接收点击的元素，但它被视觉隐藏了。
+   之前 input 宽高为 0，导致点击 .toggle-track 时事件无法传递到 input，
+   用户感觉「开关点不动」。
+   解法：把 input 铺满整个 .toggle 并设为透明但可点击，track 只负责视觉。
+   注意：input 必须显式设置 width/height 100%，不能只靠 inset，
+   因为 .toggle 用的是 inline-block/block 而非 grid。
    ========================================================================== */
 
 .toggle {
@@ -339,19 +346,50 @@
   flex-shrink: 0;
   width: 33px;
   height: 20px;
+  vertical-align: middle;
 }
+
+/* input 覆盖整个开关区域，透明但可点击 */
 .toggle input {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 33px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
   opacity: 0;
-  width: 0;
-  height: 0;
+  cursor: pointer;
+  z-index: 2;          /* 位于 track 之上，确保能接收点击 */
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: transparent;
 }
+
+/* 保持旧写法兼容 */
+.toggle input[type="checkbox"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 33px;
+  height: 20px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
 .toggle-track {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 33px;
+  height: 20px;
   border-radius: var(--radius-full);
   background: var(--surface-tertiary);
   cursor: pointer;
+  pointer-events: none;   /* 点击穿透到 input */
   transition: background-color var(--dur-normal) var(--ease-standard);
 }
 .toggle-track::after {
@@ -968,3 +1006,161 @@
 }
 
 .update-progress { margin-top: 10px; }
+
+/* ==========================================================================
+   Dialog — 统一风格的确认/提示对话框
+   --------------------------------------------------------------------------
+   替代原生 confirm()，与 .card / .group 保持同一套设计语言。
+   ========================================================================== */
+
+.dialog-host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  pointer-events: none;
+}
+
+.dialog-mask {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  animation: dialog-fade-in var(--dur-normal) var(--ease-out);
+}
+
+.dialog-mask.closing {
+  animation: dialog-fade-out var(--dur-fast) var(--ease-standard) forwards;
+}
+
+:root[data-theme="dark"] .dialog-mask {
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 400px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  animation: dialog-pop-in var(--dur-normal) var(--ease-spring);
+}
+
+.dialog-mask.closing .dialog {
+  animation: dialog-pop-out var(--dur-fast) var(--ease-standard) forwards;
+}
+
+.dialog-body {
+  padding: 20px 22px 18px;
+}
+
+.dialog-title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+}
+
+.dialog-message {
+  margin-top: 8px;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* 删除项清单：用细点列表，不用色块 */
+.dialog-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.dialog-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+}
+
+.dialog-list li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.dialog-note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 12px 16px;
+  border-top: 1px solid var(--divider);
+  background: var(--surface-secondary);
+}
+
+.dialog-actions .btn {
+  min-width: 76px;
+}
+
+/* 危险操作确认按钮：实心红 */
+.btn-danger-solid {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
+}
+.btn-danger-solid:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, black);
+  border-color: transparent;
+}
+.btn-danger-solid:active:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 78%, black);
+}
+
+/* 动画 */
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dialog-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes dialog-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes dialog-pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-mask, .dialog, .dialog-mask.closing, .dialog-mask.closing .dialog {
+    animation: none !important;
+  }
+}

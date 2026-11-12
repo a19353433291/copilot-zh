@@ -1373,9 +1373,63 @@ $('btn-import-pack').addEventListener('click', async () => {
 });
 
 $('btn-check-update').addEventListener('click', async () => {
-  const r = await window.api.checkPackUpdate();
-  if (r.notConfigured) {
-    showResult('info', '在线更新尚未配置源地址。当前版本请手动导入字典包；在线更新将在后续版本启用。');
+  const btn = $('btn-check-update');
+  if (btn) { btn.disabled = true; btn.textContent = '检查中…'; }
+  try {
+    const r = await window.api.checkPackUpdate();
+
+    if (!r.ok) {
+      await Dialog.alert({
+        title: '检查字典包更新失败',
+        message: r.reason || '未知原因',
+      });
+      return;
+    }
+
+    if (!r.latestVersion) {
+      await Dialog.alert({
+        title: '没有可用的字典包',
+        message: r.reason || '该 Release 未提供字典包文件。',
+        note: '字典包需以 packs-zh-CN-<版本>.zip 的形式作为 Release 附件上传。',
+      });
+      return;
+    }
+
+    if (!r.hasUpdate) {
+      await Dialog.alert({
+        title: '字典包已是最新',
+        message: `当前版本 ${r.currentVersion || '未安装'}，远端版本 ${r.latestVersion}。`,
+      });
+      return;
+    }
+
+    const ok = await Dialog.confirm({
+      title: '发现新的字典包',
+      message: `当前版本 ${r.currentVersion || '未安装'} → 远端版本 ${r.latestVersion}`,
+      note: r.size ? `安装包大小约 ${Math.round(r.size / 1024)} KB，更新后无需重启应用。` : '',
+      confirmText: '立即更新',
+      cancelText: '稍后',
+    });
+
+    if (!ok) return;
+
+    // 下载并导入
+    setStatus('正在更新字典包…');
+    Toast.info('正在下载字典包', `版本 ${r.latestVersion}`);
+
+    // 交给主进程下载并安装（复用导入流程需要本地文件，
+    // 这里先下载到临时目录，再由用户通过"导入"完成；
+    // 为简化第一版，提示用户手动导入下载好的文件）
+    await Dialog.alert({
+      title: '字典包下载功能',
+      message: '自动安装字典包将在下个版本启用。',
+      note: `当前可通过「打开目录」手动放入 packs-zh-CN-${r.latestVersion}.zip 后解压导入。`,
+    });
+  } catch (e) {
+    await Dialog.alert({ title: '检查失败', message: e.message });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '检查更新'; }
+    setStatus('就绪');
   }
 });
 
@@ -1485,7 +1539,19 @@ $('btn-audit').addEventListener('click', refreshAudit);
 $('btn-open-data').addEventListener('click', () => window.api.openDataFolder());
 
 $('btn-cleanall').addEventListener('click', async () => {
-  const ok = confirm('确定要彻底清理所有残留吗？\n\n将删除：\n· WebView2 调试端口策略\n· 所有字典包与用户数据\n· 缓存与日志\n\n清理后程序会自动退出以完成最后一步删除，需要重新导入字典包才能汉化。');
+  const ok = await Dialog.confirm({
+    title: '确定要彻底清理所有残留吗？',
+    message: '将删除以下内容：',
+    items: [
+      'WebView2 调试端口策略',
+      '所有字典包与用户数据',
+      '缓存与日志',
+    ],
+    note: '清理后程序会自动退出以完成最后一步删除，需要重新导入字典包才能汉化。',
+    confirmText: '彻底清理',
+    cancelText: '取消',
+    danger: true,
+  });
   if (!ok) return;
 
   setBusy(true, '正在清理…');
@@ -1511,7 +1577,13 @@ $('btn-cleanall').addEventListener('click', async () => {
   showResult(r.errors && r.errors.length ? 'err' : 'ok', lines.join('\n') || '未发现需要清理的内容。');
 
   if (r.needRestart) {
-    const quit = confirm('需要退出本程序才能完成最后的数据目录删除。\n\n现在退出吗？退出后剩余文件会自动清除。');
+    const quit = await Dialog.confirm({
+      title: '需要退出程序才能完成删除',
+      message: '最后的数据目录正被本程序占用，必须退出后才能删除。',
+      note: '退出后剩余文件会自动清除。',
+      confirmText: '立即退出',
+      cancelText: '稍后',
+    });
     if (quit) { window.api.quitApp(); return; }
     lines.push('');
     lines.push('提示：关闭本程序后，剩余文件会自动删除。');
