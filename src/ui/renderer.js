@@ -155,13 +155,17 @@ function initSelect(wrapId, onChange) {
   const label = wrap.querySelector('.select-label');
   if (!trigger || !menu) return null;
 
-  // 打开下拉时提升祖先卡片的层叠顺序，
-  // 因为 .card 的 backdrop-filter 会创建堆叠上下文，菜单否则会被后面的卡片遮住
+  // 打开下拉时提升祖先容器的层叠顺序。
+  // .card / .group 都可能带 backdrop-filter 或 overflow 裁切，会创建堆叠上下文，
+  // 菜单的 z-index 只在容器内部有效，会被后面的兄弟节点覆盖。
+  // 注意：.group 有 overflow:hidden，必须同时解除，否则菜单被裁掉。
   const raiseAncestors = (raise) => {
     let el = wrap.parentElement;
     while (el && el !== document.body) {
-      if (el.classList && (el.classList.contains('card') || el.classList.contains('row'))) {
-        el.classList.toggle('stack-raised', raise);
+      if (el.classList) {
+        if (el.classList.contains('card') || el.classList.contains('row') || el.classList.contains('group')) {
+          el.classList.toggle('stack-raised', raise);
+        }
       }
       el = el.parentElement;
     }
@@ -337,14 +341,24 @@ function renderWatcher(st) {
     }
   };
 
+  // 主状态卡左侧色条跟随状态
+  const setHeroKind = (kind) => {
+    const hero = $('hero-card');
+    if (!hero) return;
+    hero.classList.remove('is-ok', 'is-warn', 'is-err', 'is-busy');
+    if (kind) hero.classList.add('is-' + kind);
+  };
+
 
   // 运行详情区：始终按真实状态渲染（不是假数据）
   renderWatcherDetail(st);
+
   // 监控未开启
   if (!st.enabled) {
     if (title) title.textContent = '常驻监控已关闭';
     if (sub) sub.textContent = '可在设置中开启「常驻监控自动汉化」';
     setPill('', '已关闭');
+    setHeroKind('');
     return;
   }
 
@@ -354,6 +368,7 @@ function renderWatcher(st) {
     if (title) title.textContent = '监控运行中';
     if (sub) sub.textContent = '等待 GitHub Copilot 启动，启动后将自动汉化';
     setPill('ok', '运行中');
+    setHeroKind('ok');
     if (btnLaunch) btnLaunch.hidden = false;
     return;
   }
@@ -366,12 +381,14 @@ function renderWatcher(st) {
     if (title) title.textContent = '界面已汉化';
     if (sub) sub.textContent = `Copilot 运行中${t ? ' · 汉化于 ' + t : ''}`;
     setPill('ok', '已汉化');
+    setHeroKind('ok');
   } else {
     // 注入中 / 失败
     if (dot) dot.classList.add(st.lastError ? 'err' : 'busy');
     if (title) title.textContent = st.lastError ? '注入未成功' : '正在注入…';
     if (sub) sub.textContent = st.lastError || '检测到 Copilot 运行中，即将完成汉化';
     setPill(st.lastError ? 'err' : 'warn', st.lastError ? '需处理' : '注入中');
+    setHeroKind(st.lastError ? 'err' : 'busy');
   }
   if (btnInject) btnInject.hidden = false;
 
@@ -585,11 +602,11 @@ function refreshChecks() {
   if (appVal) {
     if (state.target) {
       appVal.textContent = 'v' + (state.target.version || '?');
-      if (appItem) appItem.className = 'check-item card ok';
+      if (appItem) appItem.className = 'check-item ok';
       if (appDot) appDot.className = 'status-dot ok';
     } else {
       appVal.textContent = '未安装';
-      if (appItem) appItem.className = 'check-item card err';
+      if (appItem) appItem.className = 'check-item err';
       if (appDot) appDot.className = 'status-dot err';
     }
   }
@@ -602,11 +619,11 @@ function refreshChecks() {
   if (procVal) {
     if (w && w.copilotRunning) {
       procVal.textContent = w.copilotPid ? `PID ${w.copilotPid}` : '运行中';
-      if (procItem) procItem.className = 'check-item card ok';
+      if (procItem) procItem.className = 'check-item ok';
       if (procDot) procDot.className = 'status-dot ok';
     } else {
       procVal.textContent = '未运行';
-      if (procItem) procItem.className = 'check-item card';
+      if (procItem) procItem.className = 'check-item';
       if (procDot) procDot.className = 'status-dot';
     }
   }
@@ -618,15 +635,15 @@ function refreshChecks() {
   if (portVal) {
     if (w && w.injected) {
       portVal.textContent = '已连接';
-      if (portItem) portItem.className = 'check-item card ok';
+      if (portItem) portItem.className = 'check-item ok';
       if (portDot) portDot.className = 'status-dot ok';
     } else if (w && w.copilotRunning) {
       portVal.textContent = '待连接';
-      if (portItem) portItem.className = 'check-item card warn';
+      if (portItem) portItem.className = 'check-item warn';
       if (portDot) portDot.className = 'status-dot warn';
     } else {
       portVal.textContent = '未启用';
-      if (portItem) portItem.className = 'check-item card';
+      if (portItem) portItem.className = 'check-item';
       if (portDot) portDot.className = 'status-dot';
     }
   }
@@ -638,11 +655,11 @@ function refreshChecks() {
   if (monVal) {
     if (w && w.enabled) {
       monVal.textContent = w.running ? '运行中' : '已开启';
-      if (monItem) monItem.className = 'check-item card ok';
+      if (monItem) monItem.className = 'check-item ok';
       if (monDot) monDot.className = 'status-dot ok';
     } else {
       monVal.textContent = '已关闭';
-      if (monItem) monItem.className = 'check-item card';
+      if (monItem) monItem.className = 'check-item';
       if (monDot) monDot.className = 'status-dot';
     }
   }

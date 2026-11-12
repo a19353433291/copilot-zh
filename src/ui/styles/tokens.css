@@ -1,17 +1,13 @@
 /* ==========================================================================
-   Design Tokens — 设计系统的唯一来源
+   Design Tokens — 尺寸、排版、动效
    --------------------------------------------------------------------------
-   所有尺寸、间距、圆角、字号、动效曲线集中在此。
-   主题相关的颜色不在这里（见 themes.css），以便同一套结构支持亮/暗。
+   第二次重构：对齐 macOS / Apple HIG 的比例体系。
 
-   命名约定：
-     --space-*    间距（4px 基准网格）
-     --radius-*   圆角
-     --text-*     字号
-     --font-*     字重
-     --dur-*      动效时长
-     --ease-*     缓动曲线
-     --z-*        层级
+   关键调整：
+     - 字号整体略降，正文 13px（macOS 标准）
+     - 圆角收敛：卡片 10px，控件 6px，不再用 16-20px 夸张圆角
+     - 阴影极轻：Apple 风格靠边框和层次区分，不靠投影
+     - 动效缩短：全部控制在 120-220ms
    ========================================================================== */
 
 :root {
@@ -24,88 +20,80 @@
   --space-6:  24px;
   --space-7:  32px;
   --space-8:  40px;
-  --space-9:  48px;
+  --space-9:  56px;
 
-  /* ---------- 圆角 ---------- */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  /* ---------- 圆角：克制 ---------- */
+  --radius-sm:  6px;    /* 输入框、按钮 */
+  --radius-md:  8px;    /* 下拉、小面板 */
+  --radius-lg: 10px;    /* 卡片 */
+  --radius-xl: 12px;    /* 大面板、弹窗 */
   --radius-full: 999px;
 
-  /* ---------- 字号 ---------- */
-  --text-xs:   11px;
-  --text-sm:   12px;
-  --text-base: 13px;
-  --text-md:   14px;
-  --text-lg:   16px;
-  --text-xl:   20px;
-  --text-2xl:  26px;
+  /* ---------- 字号：macOS 比例 ---------- */
+  --text-xs:   11px;    /* 最小辅助信息 */
+  --text-sm:   12px;    /* 说明文字 */
+  --text-base: 13px;    /* 正文（macOS 标准） */
+  --text-md:   14px;    /* 导航、强调正文 */
+  --text-lg:   15px;    /* 分组标题 */
+  --text-xl:   18px;    /* 页面标题 */
+  --text-2xl:  22px;    /* 重要数据 */
+  --text-3xl:  28px;    /* 主数据 */
 
   /* ---------- 行高 ---------- */
-  --leading-tight:  1.3;
-  --leading-normal: 1.5;
-  --leading-relaxed: 1.65;
+  --leading-tight:   1.25;
+  --leading-normal:  1.45;
+  --leading-relaxed: 1.6;
 
-  /* ---------- 字重 ---------- */
+  /* ---------- 字重：只用三档，避免全粗体 ---------- */
   --font-regular:  400;
   --font-medium:   500;
   --font-semibold: 600;
-  --font-bold:     700;
 
-  /* ---------- 字体族 ---------- */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
-               "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
-               "PingFang SC", "Helvetica Neue", sans-serif;
-  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  /* ---------- 字体族：Windows 原生优先 ---------- */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI",
+               "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
+               -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI",
+                  "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, "Courier New", monospace;
 
   /* ---------- 动效 ---------- */
-  --dur-fast:   140ms;
-  --dur-normal: 220ms;
-  --dur-slow:   320ms;
+  --dur-fast:   130ms;
+  --dur-normal: 180ms;
+  --dur-slow:   220ms;
 
-  --ease-standard: cubic-bezier(.2, .8, .2, 1);
-  --ease-spring:   cubic-bezier(.22, 1, .36, 1);
-  --ease-out:      cubic-bezier(.16, 1, .3, 1);
+  --ease-standard: cubic-bezier(.32, .72, 0, 1);   /* Apple 标准曲线 */
+  --ease-out:      cubic-bezier(.25, 1, .5, 1);
+  --ease-in-out:   cubic-bezier(.4, 0, .2, 1);
 
   /* ---------- 层级 ---------- */
-  --z-base:      0;
-  --z-sticky:    10;
-  --z-dropdown:  100;
-  --z-dialog:    200;
-  --z-toast:     300;
-  --z-tooltip:   400;
+  --z-base:     0;
+  --z-sticky:   10;
+  --z-dropdown: 100;
+  --z-dialog:   200;
+  --z-toast:    300;
 
   /* ---------- 布局尺寸 ---------- */
-  --sidebar-w:      224px;
-  --topbar-h:       58px;
-  --statusbar-h:    30px;
-  --page-padding-x: 28px;
-  --page-padding-y: 24px;
-  --content-max-w:  980px;
+  --sidebar-w:      220px;
+  --topbar-h:       52px;
+  --statusbar-h:    28px;
+  --page-padding-x: 32px;
+  --page-padding-y: 28px;
+  --content-max-w:  900px;
+  --nav-item-h:     34px;
 
-  /* ---------- 玻璃强度参数（由 data-glass 控制，见 base.css） ---------- */
-  --glass-blur:        20px;
-  --glass-saturate:    150%;
-  --glass-opacity-k:   1;      /* 乘数：0 = 完全不透明，1 = 标准玻璃 */
+  /* ---------- 玻璃强度 ---------- */
+  --glass-blur: 24px;
 }
 
-/* 动画关闭时把时长压到接近 0（仍保留过渡以维持状态切换不突变） */
+/* 动画关闭 */
 :root[data-motion="off"] {
   --dur-fast:   1ms;
   --dur-normal: 1ms;
   --dur-slow:   1ms;
 }
 
-/* 玻璃效果强度档位 */
+/* 玻璃关闭 */
 :root[data-glass="off"] {
-  --glass-blur:      0px;
-  --glass-saturate:  100%;
-  --glass-opacity-k: 0;
-}
-:root[data-glass="strong"] {
-  --glass-blur:      28px;
-  --glass-saturate:  170%;
-  --glass-opacity-k: 1.15;
+  --glass-blur: 0px;
 }

@@ -1,147 +1,129 @@
 /* ==========================================================================
-   Themes — 亮色 / 暗色 / 跟随系统
+   Themes — 中性配色体系（Apple 风格）
    --------------------------------------------------------------------------
-   机制：
-     :root                       → 默认亮色（无 JS 时的兜底）
-     :root[data-theme="light"]   → 显式亮色
-     :root[data-theme="dark"]    → 显式暗色
-     :root[data-theme="system"]  → 由 prefers-color-scheme 决定
+   设计原则：
+     - 背景与表面用中性灰阶，不用彩色背景
+     - 强调色只在真正需要引导注意力的地方出现（主按钮、选中态、链接）
+     - 状态色饱和度降低，接近 macOS 系统色
+     - 深浅主题都是「灰」的基底，不是「蓝」的基底
 
-   为什么 system 用 media query 而不是 JS 监听：
-     CSS 的 prefers-color-scheme 随系统即时变化，无需 JS 参与，
-     重启后也自动恢复。JS 只在需要额外逻辑（如托盘图标配色）时读取。
+   三种模式：
+     :root / [data-theme=light]   浅色
+     [data-theme=dark]            深色
+     [data-theme=system]          跟随系统（media query 驱动）
    ========================================================================== */
 
-/* ---------- 亮色（默认 / 兜底） ---------- */
+/* ---------- 浅色 ---------- */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* 背景层：极柔和的蓝灰渐变 */
-  --app-bg:            #F4F6FB;
-  --app-bg-grad-1:     rgba(214, 226, 248, 0.85);
-  --app-bg-grad-2:     rgba(232, 226, 250, 0.75);
-  --app-bg-grad-3:     rgba(244, 246, 251, 1);
-
-  /* 表面：半透明白色玻璃 */
-  --surface:           rgba(255, 255, 255, 0.72);
-  --surface-raised:    rgba(255, 255, 255, 0.86);
-  --surface-sunken:    rgba(246, 248, 252, 0.66);
-  --surface-solid:     #FFFFFF;
-  --surface-hover:     rgba(255, 255, 255, 0.94);
-  --surface-active:    rgba(255, 255, 255, 1);
-
-  /* 侧边栏（比内容区更透明，形成层次） */
-  --sidebar-bg:        rgba(255, 255, 255, 0.65);
+  /* 背景与表面：中性灰阶 */
+  --app-bg:            #F5F5F7;
+  --surface:           #FFFFFF;
+  --surface-secondary: #F0F0F2;
+  --surface-tertiary:  #E8E8ED;
+  --surface-hover:     rgba(0, 0, 0, 0.035);
+  --surface-active:    rgba(0, 0, 0, 0.065);
 
   /* 文字 */
-  --text-primary:      #1D2433;
-  --text-secondary:    #7C879B;
-  --text-tertiary:     #A3ADBE;
+  --text-primary:      #1D1D1F;
+  --text-secondary:    #6E6E73;
+  --text-tertiary:     #86868B;
   --text-inverse:      #FFFFFF;
 
   /* 边框 */
-  --border:            rgba(120, 140, 180, 0.16);
-  --border-strong:     rgba(120, 140, 180, 0.28);
-  --border-highlight:  rgba(255, 255, 255, 0.9);   /* 玻璃顶部内高光 */
+  --border:            #D2D2D7;
+  --border-subtle:     rgba(0, 0, 0, 0.06);
+  --border-strong:     #B8B8BF;
 
-  /* 品牌色 */
-  --primary:           #3975F6;
-  --primary-hover:     #2A63E0;
-  --primary-active:    #2455C8;
-  --primary-subtle:    rgba(57, 117, 246, 0.10);
-  --primary-glow:      rgba(57, 117, 246, 0.28);
+  /* 强调色：Apple 系统蓝 */
+  --primary:           #0071E3;
+  --primary-hover:     #0077ED;
+  --primary-active:    #0062C4;
+  --primary-subtle:    rgba(0, 113, 227, 0.08);
+  --primary-text:      #0071E3;
 
-  --accent:            #7759E8;
-  --accent-subtle:     rgba(119, 89, 232, 0.10);
+  /* 语义色：macOS 系统色 */
+  --success:           #248A3D;
+  --success-subtle:    rgba(36, 138, 61, 0.10);
+  --warning:           #B66A00;
+  --warning-subtle:    rgba(182, 106, 0, 0.10);
+  --danger:            #D70015;
+  --danger-subtle:     rgba(215, 0, 21, 0.09);
 
-  /* 语义色 */
-  --success:           #20B978;
-  --success-subtle:    rgba(32, 185, 120, 0.12);
-  --warning:           #E0A030;
-  --warning-subtle:    rgba(224, 160, 48, 0.13);
-  --danger:            #E45462;
-  --danger-subtle:     rgba(228, 84, 98, 0.11);
+  /* 侧边栏与顶栏 */
+  --sidebar-bg:        #F5F5F7;
+  --header-bg:         rgba(245, 245, 247, 0.88);
+  --statusbar-bg:      #F5F5F7;
 
-  /* 阴影：柔和、低对比，不用纯黑 */
-  --shadow-sm:  0 1px 2px rgba(29, 36, 51, 0.04),
-                0 1px 3px rgba(29, 36, 51, 0.03);
-  --shadow-md:  0 2px 8px rgba(29, 36, 51, 0.06),
-                0 8px 24px rgba(29, 36, 51, 0.05);
-  --shadow-lg:  0 8px 20px rgba(29, 36, 51, 0.08),
-                0 24px 56px rgba(29, 36, 51, 0.08);
-  --shadow-glow: 0 0 0 1px var(--border),
-                 0 8px 32px var(--primary-glow);
+  /* 阴影：极轻，仅用于真正浮起的层 */
+  --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-pop:   0 4px 16px rgba(0, 0, 0, 0.10), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+
+  /* 导航选中 */
+  --nav-active-bg:     rgba(0, 0, 0, 0.055);
+  --nav-active-text:   var(--text-primary);
+  --nav-hover-bg:      rgba(0, 0, 0, 0.032);
 
   /* 滚动条 */
-  --scrollbar-thumb: rgba(120, 140, 180, 0.28);
-  --scrollbar-thumb-hover: rgba(120, 140, 180, 0.45);
+  --scrollbar-thumb:       rgba(0, 0, 0, 0.20);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
 
-  /* 选中态渐变（侧边栏导航） */
-  --nav-active-bg: linear-gradient(135deg,
-                     rgba(57, 117, 246, 0.13) 0%,
-                     rgba(119, 89, 232, 0.10) 100%);
-  --nav-active-text: var(--primary);
+  /* 分割线（比边框更淡，用于列表内部分隔） */
+  --divider: rgba(0, 0, 0, 0.07);
 }
 
-/* ---------- 暗色 ---------- */
+/* ---------- 深色 ---------- */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --app-bg:            #101522;
-  --app-bg-grad-1:     rgba(38, 52, 86, 0.72);
-  --app-bg-grad-2:     rgba(48, 38, 78, 0.62);
-  --app-bg-grad-3:     rgba(16, 21, 34, 1);
+  --app-bg:            #1C1C1E;
+  --surface:           #2C2C2E;
+  --surface-secondary: #3A3A3C;
+  --surface-tertiary:  #48484A;
+  --surface-hover:     rgba(255, 255, 255, 0.055);
+  --surface-active:    rgba(255, 255, 255, 0.095);
 
-  --surface:           rgba(30, 39, 58, 0.76);
-  --surface-raised:    rgba(38, 49, 72, 0.88);
-  --surface-sunken:    rgba(24, 32, 48, 0.72);
-  --surface-solid:     #1C2537;
-  --surface-hover:     rgba(44, 56, 82, 0.92);
-  --surface-active:    rgba(50, 63, 92, 1);
+  --text-primary:      #F5F5F7;
+  --text-secondary:    #98989D;
+  --text-tertiary:     #636366;
+  --text-inverse:      #1C1C1E;
 
-  --sidebar-bg:        rgba(20, 28, 43, 0.82);
+  --border:            #48484A;
+  --border-subtle:     rgba(255, 255, 255, 0.08);
+  --border-strong:     #636366;
 
-  --text-primary:      #EDF2FC;
-  --text-secondary:    #9AA8BE;
-  --text-tertiary:     #6B7A92;
-  --text-inverse:      #101522;
+  --primary:           #0A84FF;
+  --primary-hover:     #409CFF;
+  --primary-active:    #0069D9;
+  --primary-subtle:    rgba(10, 132, 255, 0.16);
+  --primary-text:      #409CFF;
 
-  --border:            rgba(180, 200, 240, 0.12);
-  --border-strong:     rgba(180, 200, 240, 0.22);
-  --border-highlight:  rgba(200, 220, 255, 0.14);
+  --success:           #30D158;
+  --success-subtle:    rgba(48, 209, 88, 0.15);
+  --warning:           #FFD60A;
+  --warning-subtle:    rgba(255, 214, 10, 0.14);
+  --danger:            #FF453A;
+  --danger-subtle:     rgba(255, 69, 58, 0.15);
 
-  --primary:           #6C9BFF;
-  --primary-hover:     #85ADFF;
-  --primary-active:    #9BBDFF;
-  --primary-subtle:    rgba(108, 155, 255, 0.14);
-  --primary-glow:      rgba(108, 155, 255, 0.35);
+  --sidebar-bg:        #1C1C1E;
+  --header-bg:         rgba(28, 28, 30, 0.88);
+  --statusbar-bg:      #1C1C1E;
 
-  --accent:            #A18AFF;
-  --accent-subtle:     rgba(161, 138, 255, 0.14);
+  --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-pop:   0 4px 20px rgba(0, 0, 0, 0.44), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
 
-  --success:           #35D69A;
-  --success-subtle:    rgba(53, 214, 154, 0.15);
-  --warning:           #F0B44A;
-  --warning-subtle:    rgba(240, 180, 74, 0.15);
-  --danger:            #FF7180;
-  --danger-subtle:     rgba(255, 113, 128, 0.15);
+  --nav-active-bg:     rgba(255, 255, 255, 0.085);
+  --nav-active-text:   var(--text-primary);
+  --nav-hover-bg:      rgba(255, 255, 255, 0.045);
 
-  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.32),
-                0 8px 28px rgba(0, 0, 0, 0.28);
-  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.38),
-                0 28px 64px rgba(0, 0, 0, 0.40);
-  --shadow-glow: 0 0 0 1px var(--border),
-                 0 8px 36px var(--primary-glow);
+  --scrollbar-thumb:       rgba(255, 255, 255, 0.20);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 
-  --scrollbar-thumb: rgba(180, 200, 240, 0.20);
-  --scrollbar-thumb-hover: rgba(180, 200, 240, 0.34);
-
-  --nav-active-bg: linear-gradient(135deg,
-                     rgba(108, 155, 255, 0.20) 0%,
-                     rgba(161, 138, 255, 0.16) 100%);
-  --nav-active-text: #A8C4FF;
+  --divider: rgba(255, 255, 255, 0.075);
 }
 
 /* ---------- 跟随系统 ---------- */
@@ -149,59 +131,50 @@
   :root[data-theme="system"] {
     color-scheme: dark;
 
-    --app-bg:            #101522;
-    --app-bg-grad-1:     rgba(38, 52, 86, 0.72);
-    --app-bg-grad-2:     rgba(48, 38, 78, 0.62);
-    --app-bg-grad-3:     rgba(16, 21, 34, 1);
+    --app-bg:            #1C1C1E;
+    --surface:           #2C2C2E;
+    --surface-secondary: #3A3A3C;
+    --surface-tertiary:  #48484A;
+    --surface-hover:     rgba(255, 255, 255, 0.055);
+    --surface-active:    rgba(255, 255, 255, 0.095);
 
-    --surface:           rgba(30, 39, 58, 0.76);
-    --surface-raised:    rgba(38, 49, 72, 0.88);
-    --surface-sunken:    rgba(24, 32, 48, 0.72);
-    --surface-solid:     #1C2537;
-    --surface-hover:     rgba(44, 56, 82, 0.92);
-    --surface-active:    rgba(50, 63, 92, 1);
+    --text-primary:      #F5F5F7;
+    --text-secondary:    #98989D;
+    --text-tertiary:     #636366;
+    --text-inverse:      #1C1C1E;
 
-    --sidebar-bg:        rgba(20, 28, 43, 0.82);
+    --border:            #48484A;
+    --border-subtle:     rgba(255, 255, 255, 0.08);
+    --border-strong:     #636366;
 
-    --text-primary:      #EDF2FC;
-    --text-secondary:    #9AA8BE;
-    --text-tertiary:     #6B7A92;
-    --text-inverse:      #101522;
+    --primary:           #0A84FF;
+    --primary-hover:     #409CFF;
+    --primary-active:    #0069D9;
+    --primary-subtle:    rgba(10, 132, 255, 0.16);
+    --primary-text:      #409CFF;
 
-    --border:            rgba(180, 200, 240, 0.12);
-    --border-strong:     rgba(180, 200, 240, 0.22);
-    --border-highlight:  rgba(200, 220, 255, 0.14);
+    --success:           #30D158;
+    --success-subtle:    rgba(48, 209, 88, 0.15);
+    --warning:           #FFD60A;
+    --warning-subtle:    rgba(255, 214, 10, 0.14);
+    --danger:            #FF453A;
+    --danger-subtle:     rgba(255, 69, 58, 0.15);
 
-    --primary:           #6C9BFF;
-    --primary-hover:     #85ADFF;
-    --primary-active:    #9BBDFF;
-    --primary-subtle:    rgba(108, 155, 255, 0.14);
-    --primary-glow:      rgba(108, 155, 255, 0.35);
+    --sidebar-bg:        #1C1C1E;
+    --header-bg:         rgba(28, 28, 30, 0.88);
+    --statusbar-bg:      #1C1C1E;
 
-    --accent:            #A18AFF;
-    --accent-subtle:     rgba(161, 138, 255, 0.14);
+    --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.18);
+    --shadow-pop:   0 4px 20px rgba(0, 0, 0, 0.44), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
 
-    --success:           #35D69A;
-    --success-subtle:    rgba(53, 214, 154, 0.15);
-    --warning:           #F0B44A;
-    --warning-subtle:    rgba(240, 180, 74, 0.15);
-    --danger:            #FF7180;
-    --danger-subtle:     rgba(255, 113, 128, 0.15);
+    --nav-active-bg:     rgba(255, 255, 255, 0.085);
+    --nav-active-text:   var(--text-primary);
+    --nav-hover-bg:      rgba(255, 255, 255, 0.045);
 
-    --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.28);
-    --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.32),
-                  0 8px 28px rgba(0, 0, 0, 0.28);
-    --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.38),
-                  0 28px 64px rgba(0, 0, 0, 0.40);
-    --shadow-glow: 0 0 0 1px var(--border),
-                   0 8px 36px var(--primary-glow);
+    --scrollbar-thumb:       rgba(255, 255, 255, 0.20);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 
-    --scrollbar-thumb: rgba(180, 200, 240, 0.20);
-    --scrollbar-thumb-hover: rgba(180, 200, 240, 0.34);
-
-    --nav-active-bg: linear-gradient(135deg,
-                       rgba(108, 155, 255, 0.20) 0%,
-                       rgba(161, 138, 255, 0.16) 100%);
-    --nav-active-text: #A8C4FF;
+    --divider: rgba(255, 255, 255, 0.075);
   }
 }

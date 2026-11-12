@@ -1,167 +1,133 @@
 /* ==========================================================================
-   Layout — 应用外壳：侧边栏 / 顶栏 / 内容区 / 状态栏
+   Layout — 应用外壳
+   --------------------------------------------------------------------------
+   参考 macOS System Settings 的结构：
+     - 侧边栏与内容区同色系，靠一条细分割线区分，不用阴影
+     - 顶栏不做独立容器感，只是内容区上方的一条带标题的窄条
+     - 状态栏极简，字号最小，颜色最淡
    ========================================================================== */
 
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  grid-template-rows: 1fr;
   height: 100vh;
-  position: relative;
+  background: var(--app-bg);
 }
 
 /* ---------- 侧边栏 ---------- */
 .sidebar {
-  grid-column: 1;
   display: flex;
   flex-direction: column;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  position: relative;
-  z-index: var(--z-sticky);
-  -webkit-app-region: drag;          /* 顶部可拖动窗口 */
-  transition:
-    background-color var(--dur-normal) var(--ease-standard),
-    border-color var(--dur-normal) var(--ease-standard);
+  border-right: 1px solid var(--divider);
+  -webkit-app-region: drag;
+  transition: background-color var(--dur-normal) var(--ease-standard);
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .sidebar {
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  }
-}
-:root[data-glass="off"] .sidebar {
-  background: var(--surface-solid);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-/* 侧边栏右缘极细高光，强化玻璃厚度感 */
-.sidebar::after {
-  content: '';
-  position: absolute;
-  top: 0; right: -1px; bottom: 0;
-  width: 1px;
-  background: linear-gradient(180deg,
-    transparent 0%,
-    var(--border-highlight) 18%,
-    var(--border-highlight) 82%,
-    transparent 100%);
-  pointer-events: none;
-  opacity: .6;
-}
-
-/* 品牌区 */
+/* 品牌区：紧凑，不做视觉焦点 */
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) var(--space-4) var(--space-4);
+  gap: 10px;
+  padding: 18px 16px 14px;
   -webkit-app-region: drag;
 }
 
 .brand-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   object-fit: contain;
   flex-shrink: 0;
-  /* 图标本身是圆角图形，加一点光晕让它浮起来 */
-  filter: drop-shadow(0 2px 6px rgba(57, 117, 246, 0.28));
-  transition: transform var(--dur-normal) var(--ease-spring);
 }
-.sidebar-brand:hover .brand-logo { transform: scale(1.05); }
 
 .brand-meta { min-width: 0; }
+
 .brand-name {
+  font-family: var(--font-display);
   font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  letter-spacing: -0.01em;
+  font-weight: var(--font-medium);
+  letter-spacing: -0.005em;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .brand-ver {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
-  margin-top: 1px;
 }
 
-/* 导航 */
+/* 导航：macOS 侧栏列表风格 */
 .nav {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
+  gap: 1px;
+  padding: 4px 10px;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-app-region: no-drag;
-  scrollbar-width: none;          /* Firefox */
+  scrollbar-width: none;
 }
-.nav::-webkit-scrollbar { width: 0; height: 0; display: none; }   /* 侧边栏内不需要可见滚动条 */
+.nav::-webkit-scrollbar { display: none; }
 
 .nav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   width: 100%;
-  padding: 9px var(--space-3);
+  height: var(--nav-item-h);
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
+  font-size: var(--text-md);
+  font-weight: var(--font-regular);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-normal) var(--ease-standard),
+    color var(--dur-normal) var(--ease-standard);
 }
 
 .nav-item svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-  stroke-width: 1.75;
-  transition: transform var(--dur-normal) var(--ease-spring);
+  stroke-width: 1.7;
+  opacity: .85;
 }
 
 .nav-item:hover {
-  background: var(--surface-hover);
+  background: var(--nav-hover-bg);
   color: var(--text-primary);
 }
-.nav-item:hover svg { transform: scale(1.06); }
 
-.nav-item:active { transform: scale(.985); }
-
+/* 选中态：低调的灰底 + 左侧细蓝条 */
 .nav-item.active {
   background: var(--nav-active-bg);
   color: var(--nav-active-text);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-medium);
 }
-.nav-item.active svg { stroke-width: 2; }
+.nav-item.active svg { opacity: 1; stroke-width: 1.9; }
 
-/* 选中项左侧指示条 */
 .nav-item.active::before {
   content: '';
   position: absolute;
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  border-radius: 0 3px 3px 0;
+  width: 2.5px;
+  height: 15px;
+  border-radius: 0 2px 2px 0;
   background: var(--primary);
-  box-shadow: 0 0 8px var(--primary-glow);
 }
 
 .nav-item:focus-visible {
@@ -169,75 +135,80 @@
   outline-offset: -2px;
 }
 
-/* 侧边栏底部：运行状态 */
+/* 底部状态：与导航区分离 */
 .sidebar-foot {
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--divider);
   -webkit-app-region: no-drag;
 }
 
 .sidebar-status {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 7px var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  font-size: var(--text-xs);
+  gap: 7px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
-  transition: background-color var(--dur-normal) var(--ease-standard);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- 主区域 ---------- */
 .content-area {
-  grid-column: 2;
   display: grid;
   grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
   min-width: 0;
   min-height: 0;
 }
 
-/* 顶栏 */
+/* 顶栏：细窄，只有标题与必要操作 */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: 0 var(--page-padding-x);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--divider);
+  background: var(--app-bg);
   -webkit-app-region: drag;
-  transition:
-    background-color var(--dur-normal) var(--ease-standard),
-    border-color var(--dur-normal) var(--ease-standard);
+  transition: background-color var(--dur-normal) var(--ease-standard);
+}
+
+/* 内容滚动时顶栏才显出材质，避免静态时也有模糊层 */
+.topbar.scrolled {
+  background: var(--header-bg);
+  border-bottom-color: var(--divider);
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .topbar {
-    backdrop-filter: blur(calc(var(--glass-blur) * 0.8)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.8)) saturate(var(--glass-saturate));
+  .topbar.scrolled {
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   }
 }
-
-.topbar-left { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
-
-.page-title {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  letter-spacing: -0.015em;
-  color: var(--text-primary);
-  white-space: nowrap;
+:root[data-glass="off"] .topbar.scrolled {
+  background: var(--app-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.page-subtitle {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .topbar-right {
@@ -252,7 +223,7 @@
 .pages {
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--page-padding-y) var(--page-padding-x) var(--space-8);
+  padding: var(--page-padding-y) var(--page-padding-x) var(--space-9);
   scroll-behavior: smooth;
 }
 
@@ -261,7 +232,7 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-7);
 }
 
 /* 状态栏 */
@@ -271,42 +242,44 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: 0 var(--page-padding-x);
-  border-top: 1px solid var(--border);
-  background: var(--surface-sunken);
+  border-top: 1px solid var(--divider);
+  background: var(--statusbar-bg);
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-  transition:
-    background-color var(--dur-normal) var(--ease-standard),
-    border-color var(--dur-normal) var(--ease-standard);
+  transition: background-color var(--dur-normal) var(--ease-standard);
 }
 
-.statusbar-left { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.statusbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
 
 .statusbar-path {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  max-width: 52vw;
+  max-width: 50vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   direction: rtl;
   text-align: right;
   color: var(--text-tertiary);
-  opacity: .85;
 }
 
-/* ---------- 窗口较窄时的适配 ---------- */
-@media (max-width: 860px) {
+/* ---------- 窄窗适配 ---------- */
+@media (max-width: 900px) {
   :root {
-    --sidebar-w: 68px;
-    --page-padding-x: 18px;
+    --sidebar-w: 64px;
+    --page-padding-x: 20px;
   }
   .brand-meta,
   .nav-item span,
   .sidebar-status span:not(.status-dot) { display: none; }
-  .nav-item { justify-content: center; padding: 10px; }
+  .nav-item { justify-content: center; padding: 0; }
   .sidebar-brand { justify-content: center; padding-inline: 0; }
-  .sidebar-status { justify-content: center; padding: 8px; }
+  .sidebar-foot { display: flex; justify-content: center; }
   .nav-item.active::before { display: none; }
-  .statusbar-path { max-width: 40vw; }
+  .statusbar-path { max-width: 38vw; }
 }

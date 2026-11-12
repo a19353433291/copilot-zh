@@ -146,7 +146,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await ev(`document.documentElement.dataset.motion = 'off'`);
   await sleep(200);
   const motionOff = await ev(`(() => {
-    const el = document.querySelector('.card');
+    const el = document.querySelector('.group') || document.querySelector('.btn');
     const cs = getComputedStyle(el);
     return JSON.stringify({ transition: cs.transitionDuration, dataMotion: document.documentElement.dataset.motion });
   })()`);

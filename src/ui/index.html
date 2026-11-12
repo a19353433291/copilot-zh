@@ -96,7 +96,7 @@
         <div class="page-inner">
 
           <!-- 主状态卡 -->
-          <div class="hero-status card" id="hero-card">
+          <div class="hero-status" id="hero-card">
             <div class="hero-status-main">
               <div class="hero-status-icon">
                 <span class="status-dot lg" id="home-dot"></span>
@@ -114,7 +114,7 @@
 
           <!-- 统计格 -->
           <div class="stat-grid">
-            <div class="stat-card card card-hover">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">目标版本</span>
                 <span class="stat-icon" aria-hidden="true">
@@ -124,7 +124,7 @@
               <div class="stat-value" id="stat-version">—</div>
             </div>
 
-            <div class="stat-card card card-hover">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">签名状态</span>
                 <span class="stat-icon" aria-hidden="true">
@@ -134,7 +134,7 @@
               <div class="stat-value" id="stat-sign">—</div>
             </div>
 
-            <div class="stat-card card card-hover">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">字典条目</span>
                 <span class="stat-icon" aria-hidden="true">
@@ -164,13 +164,13 @@
 
           <div class="alert" id="result" hidden></div>
 
-          <!-- 详细状态：把业务里有但概览没展示的信息补齐，消除大片空白 -->
-          <div class="card" id="home-detail-card">
-            <div class="card-head">
-              <span class="card-title">运行详情</span>
+          <!-- 详细状态 -->
+          <div>
+            <div class="group-label">
+              <span>运行详情</span>
               <span class="badge" id="home-state-badge">—</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group" id="home-detail-card">
               <div class="row">
                 <div class="row-main">
                   <div class="row-title">GitHub Copilot 进程</div>
@@ -214,7 +214,7 @@
               <button class="btn btn-sm btn-ghost" id="btn-locate">重新检测</button>
             </div>
             <div class="check-grid">
-              <div class="check-item card" id="check-app">
+              <div class="check-item" id="check-app">
                 <div class="check-head">
                   <span class="check-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
@@ -225,7 +225,7 @@
                 <div class="check-value" id="check-app-value">检测中…</div>
               </div>
 
-              <div class="check-item card" id="check-proc">
+              <div class="check-item" id="check-proc">
                 <div class="check-head">
                   <span class="check-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -236,7 +236,7 @@
                 <div class="check-value" id="check-proc-value">—</div>
               </div>
 
-              <div class="check-item card" id="check-port">
+              <div class="check-item" id="check-port">
                 <div class="check-head">
                   <span class="check-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a6 6 0 0 1-12 0V8z"/></svg>
@@ -247,7 +247,7 @@
                 <div class="check-value" id="check-port-value">—</div>
               </div>
 
-              <div class="check-item card" id="check-monitor">
+              <div class="check-item" id="check-monitor">
                 <div class="check-head">
                   <span class="check-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16"/><path d="M3 21v-5h5"/></svg>
@@ -261,12 +261,12 @@
           </div>
 
           <!-- 目标应用详情 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">目标应用</span>
+          <div>
+            <div class="group-label">
+              <span>目标应用</span>
               <button class="btn btn-sm btn-ghost" id="btn-choose">手动选择</button>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
               <div class="row">
                 <div class="row-main">
                   <div class="row-value" id="target-info">正在检测…</div>
@@ -277,22 +277,25 @@
           </div>
 
           <!-- 汉化模式 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">汉化模式</span>
+          <div>
+            <div class="group-label">
+              <span>汉化模式</span>
             </div>
-            <div class="card-body">
-              <div class="engine-list" id="engine-list"></div>
-              <p class="footnote" id="engine-hint"></p>
+            <div class="group">
+              <div class="group-pad">
+                <div class="engine-list" id="engine-list"></div>
+                <p class="footnote" id="engine-hint"></p>
+              </div>
             </div>
           </div>
 
           <!-- 操作 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">执行</span>
+          <div>
+            <div class="group-label">
+              <span>执行</span>
             </div>
-            <div class="card-body">
+            <div class="group">
+              <div class="group-pad">
               <div class="primary-actions">
                 <button class="btn btn-primary btn-lg" id="btn-apply" disabled>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -340,6 +343,7 @@
                 <div class="progress-track"><div class="progress-fill" id="translate-progress-fill"></div></div>
                 <div class="progress-text" id="translate-progress-text">准备中…</div>
               </div>
+              </div>
             </div>
           </div>
 
@@ -351,7 +355,7 @@
         <div class="page-inner">
 
           <!-- 概览条 -->
-          <div class="hero-status card">
+          <div class="hero-status">
             <div class="hero-status-main">
               <div class="hero-status-icon">
                 <span class="status-dot lg" id="dict-dot"></span>
@@ -373,28 +377,28 @@
               <span class="section-title">条目统计</span>
             </div>
             <div class="stat-grid stat-grid-4">
-              <div class="stat-card card card-hover">
+              <div class="stat-card">
                 <div class="stat-card-head">
                   <span class="stat-label">精确文本</span>
                 </div>
                 <div class="stat-value" id="dict-count-texts">—</div>
                 <div class="stat-note">texts · 完整句子与标签</div>
               </div>
-              <div class="stat-card card card-hover">
+              <div class="stat-card">
                 <div class="stat-card-head">
                   <span class="stat-label">文本正则</span>
                 </div>
                 <div class="stat-value" id="dict-count-patterns">—</div>
                 <div class="stat-note">patterns · 动态文案</div>
               </div>
-              <div class="stat-card card card-hover">
+              <div class="stat-card">
                 <div class="stat-card-head">
                   <span class="stat-label">属性映射</span>
                 </div>
                 <div class="stat-value" id="dict-count-attrs">—</div>
                 <div class="stat-note">attrs · aria-label 等</div>
               </div>
-              <div class="stat-card card card-hover">
+              <div class="stat-card">
                 <div class="stat-card-head">
                   <span class="stat-label">属性正则</span>
                 </div>
@@ -405,12 +409,12 @@
           </div>
 
           <!-- 包信息 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">包信息</span>
+          <div>
+            <div class="group-label">
+              <span>包信息</span>
               <span class="badge" id="dict-verify-badge">—</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
               <div class="row">
                 <div class="row-main">
                   <div class="row-title">版本号</div>
@@ -446,15 +450,21 @@
                 </div>
                 <span class="mono" id="dict-payload-size">—</span>
               </div>
-            </div>
-            <div class="card-foot">
-              <button class="btn btn-sm" id="btn-import-pack">导入字典包…</button>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">更新字典包</div>
+                  <div class="row-desc">选择包含 manifest.json 的目录，或直接选择打包文件</div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn btn-sm" id="btn-import-pack">导入字典包…</button>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- 说明 -->
-          <div class="card">
-            <div class="card-body">
+          <div class="group">
+            <div class="group-pad">
               <div class="info-list">
                 <div class="info-item">
                   <span class="info-icon">
@@ -486,7 +496,7 @@
         <div class="page-inner">
 
           <!-- 扫描概览 -->
-          <div class="hero-status card">
+          <div class="hero-status">
             <div class="hero-status-main">
               <div class="hero-status-icon">
                 <span class="status-dot lg" id="cleanup-dot"></span>
@@ -506,28 +516,28 @@
 
           <!-- 分类统计 -->
           <div class="stat-grid stat-grid-4" id="cleanup-stats">
-            <div class="stat-card card">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">注册表</span>
               </div>
               <div class="stat-value" id="cleanup-count-registry">0</div>
               <div class="stat-note">策略与自启项</div>
             </div>
-            <div class="stat-card card">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">文件数据</span>
               </div>
               <div class="stat-value" id="cleanup-count-file">0</div>
               <div class="stat-note">用户数据与缓存</div>
             </div>
-            <div class="stat-card card">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">合计</span>
               </div>
               <div class="stat-value" id="cleanup-count-total">0</div>
               <div class="stat-note">待清理项</div>
             </div>
-            <div class="stat-card card">
+            <div class="stat-card">
               <div class="stat-card-head">
                 <span class="stat-label">占用中</span>
               </div>
@@ -537,23 +547,25 @@
           </div>
 
           <!-- 详细列表 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">痕迹明细</span>
+          <div>
+            <div class="group-label">
+              <span>痕迹明细</span>
               <span class="badge" id="cleanup-badge">—</span>
             </div>
-            <div class="card-body">
-              <div class="audit-box" id="audit-info">尚未检查</div>
-            </div>
-            <div class="card-foot">
-              <button class="btn btn-sm btn-ghost" id="btn-open-data">打开数据目录</button>
-              <button class="btn btn-sm btn-danger" id="btn-cleanall">彻底清理</button>
+            <div class="group">
+              <div class="group-pad">
+                <div class="audit-box" id="audit-info">尚未检查</div>
+              </div>
+              <div class="card-foot">
+                <button class="btn btn-sm btn-ghost" id="btn-open-data">打开数据目录</button>
+                <button class="btn btn-sm btn-danger" id="btn-cleanall">彻底清理</button>
+              </div>
             </div>
           </div>
 
           <!-- 说明 -->
-          <div class="card">
-            <div class="card-body">
+          <div class="group">
+            <div class="group-pad">
               <div class="info-list">
                 <div class="info-item">
                   <span class="info-icon">
@@ -585,11 +597,11 @@
         <div class="page-inner">
 
           <!-- 外观 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">外观</span>
+          <div>
+            <div class="group-label">
+              <span>外观</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
               <div class="row">
                 <div class="row-main">
                   <div class="row-title">主题模式</div>
@@ -643,11 +655,11 @@
           </div>
 
           <!-- 汉化行为 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">汉化行为</span>
+          <div>
+            <div class="group-label">
+              <span>汉化行为</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
 
               <div class="row">
                 <div class="row-main">
@@ -716,11 +728,11 @@
           </div>
 
           <!-- 系统集成 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">系统集成</span>
+          <div>
+            <div class="group-label">
+              <span>系统集成</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
 
               <div class="row">
                 <div class="row-main">
@@ -748,11 +760,11 @@
           </div>
 
           <!-- 数据 -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-title">数据</span>
+          <div>
+            <div class="group-label">
+              <span>数据</span>
             </div>
-            <div class="card-body card-body-flush">
+            <div class="group">
 
               <div class="row">
                 <div class="row-main">
