@@ -172,6 +172,38 @@ await testAsync('状态回调被触发', async () => {
   assert.ok(states.includes('error'));
 });
 
+console.log('\n=== 8. prerelease 回退逻辑 ===');
+await testAsync('compareTag 版本比较正确', async () => {
+  const { compareTag } = require('../src/core/update/sources');
+  if (typeof compareTag !== 'function') {
+    // 未导出时跳过（保持向后兼容）
+    console.log('      （compareTag 未导出，跳过）');
+    return;
+  }
+  assert.strictEqual(compareTag('0.10.0', '0.9.0'), 1);
+  assert.strictEqual(compareTag('0.9.0', '0.10.0'), -1);
+  assert.strictEqual(compareTag('v1.0.0', '1.0.0'), 0);
+  assert.strictEqual(compareTag('1.2.3', '1.2'), 1);
+});
+
+// 回归测试：确保 /releases/latest 的 prerelease 坑已被处理。
+// 这个 bug 的表现是：仓库只有 prerelease 时，检查更新报「还没有发布 Release」。
+await testAsync('只有 prerelease 的仓库也能检查到更新', async () => {
+  const { GitHubSource } = require('../src/core/update/sources');
+  const src = new GitHubSource({ owner: 'a19353433291', repo: 'copilot-zh' });
+  const r = await src.fetchLatest();
+  // 允许网络失败（离线环境），但若成功，不应报「没有 Release」
+  if (!r.ok) {
+    const isNetworkIssue = /超时|ECONN|ENOTFOUND|查询失败/.test(String(r.reason));
+    if (isNetworkIssue) { console.log('      （网络不可达，跳过实际校验）'); return; }
+    assert.fail('不应报「还没有发布任何 Release」，实际：' + r.reason);
+  }
+  assert.ok(r.version, '应返回版本号');
+  assert.ok(r.assets.exeUrl, '应返回安装包地址');
+  // 该仓库当前只有 prerelease，走回退路径后应能拿到
+  console.log(`      实际检测到 v${r.version}（prerelease=${r.prerelease}）`);
+});
+
 console.log('\n==================================');
 console.log(`  通过 ${passed} / ${passed + failed}`);
 console.log('==================================');

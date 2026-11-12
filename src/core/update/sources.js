@@ -161,6 +161,26 @@ function parseYml(text) {
 }
 
 /**
+ * 比较两个 tag 的版本序列（用于从列表中挑最大的）。
+ * 避免循环依赖 updater.js，这里实现一份轻量的。
+ */
+function compareTag(a, b) {
+  const norm = (v) => String(v || '0')
+    .replace(/^v/i, '')
+    .split('-')[0]
+    .split('.')
+    .map(x => parseInt(x, 10) || 0);
+  const pa = norm(a), pb = norm(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] || 0, vb = pb[i] || 0;
+    if (va > vb) return 1;
+    if (va < vb) return -1;
+  }
+  return 0;
+}
+
+/**
  * GitHub 源。
  * 通过 api.github.com 查最新 Release，从 assets 里找 latest.yml 与 exe。
  * 注意：下载走 browser_download_url（github.com 域），不走 raw.githubusercontent.com。
@@ -178,20 +198,58 @@ class GitHubSource {
    * @param {(msg:string)=>void} onLog 可选日志回调
    */
   async fetchLatest(onLog = () => {}) {
-    const api = `https://api.github.com/repos/${this.owner}/${this.repo}/releases/latest`;
     const headers = { 'Accept': 'application/vnd.github+json' };
     if (this.token) headers['Authorization'] = 'Bearer ' + this.token;
 
     onLog('查询 GitHub 最新版本…');
-    let data;
+
+    // 关键：/releases/latest 会跳过 prerelease。
+    // 预览版（prerelease=true）的 Release 在该接口下返回 404，
+    // 导致「包含预览版的仓库」永远检查不到更新。
+    // 因此先尝试 latest，失败则回退到列表接口，自行挑选最新版本。
+    let data = null;
+    let usedFallback = false;
+
     try {
-      data = await requestJson(api, { headers, timeout: 20000 });
+      data = await requestJson(
+        `https://api.github.com/repos/${this.owner}/${this.repo}/releases/latest`,
+        { headers, timeout: 20000 }
+      );
     } catch (e) {
+      // 404 通常意味着「只有预览版」，回退到列表接口
       if (String(e.message).includes('404')) {
-        return { ok: false, reason: '该仓库还没有发布任何 Release' };
+        onLog('未找到正式版，改查全部 Release（含预览版）…');
+        usedFallback = true;
+        try {
+          const list = await requestJson(
+            `https://api.github.com/repos/${this.owner}/${this.repo}/releases?per_page=30`,
+            { headers, timeout: 20000 }
+          );
+          if (!Array.isArray(list) || !list.length) {
+            return { ok: false, reason: '该仓库还没有发布任何 Release' };
+          }
+          // 过滤草稿，按版本号比较取最大（不依赖列表顺序）
+          const candidates = list.filter(x => !x.draft);
+          if (!candidates.length) {
+            return { ok: false, reason: '该仓库还没有发布任何 Release' };
+          }
+          data = candidates.reduce((best, cur) => {
+            const curV = String(cur.tag_name || '').replace(/^v/i, '');
+            const bestV = String(best.tag_name || '').replace(/^v/i, '');
+            return compareTag(curV, bestV) > 0 ? cur : best;
+          });
+          if (data.prerelease) {
+            onLog('注意：当前最新版本是预览版（' + data.tag_name + '）');
+          }
+        } catch (e2) {
+          return { ok: false, reason: '查询失败：' + e2.message };
+        }
+      } else {
+        return { ok: false, reason: '查询失败：' + e.message };
       }
-      return { ok: false, reason: '查询失败：' + e.message };
     }
+
+    if (!data) return { ok: false, reason: '查询失败：无响应' };
 
     const tag = String(data.tag_name || '').replace(/^v/i, '');
     if (!tag) return { ok: false, reason: 'Release 缺少版本号' };
@@ -201,7 +259,11 @@ class GitHubSource {
     const exeAsset = assets.find(a => /\.exe$/i.test(a.name));
 
     if (!ymlAsset || !exeAsset) {
-      return { ok: false, reason: 'Release 缺少 latest.yml 或安装包' };
+      return {
+        ok: false,
+        reason: 'Release 缺少 latest.yml 或安装包（当前附件：'
+          + (assets.map(a => a.name).join(', ') || '无') + '）',
+      };
     }
 
     // 下载 latest.yml 内容用于校验
@@ -223,6 +285,8 @@ class GitHubSource {
       notes: data.body || '',
       publishedAt: data.published_at || null,
       htmlUrl: data.html_url || '',
+      prerelease: !!data.prerelease,
+      fromFallback: usedFallback,
       assets: {
         exeUrl: exeAsset.browser_download_url,
         exeName: exeAsset.name,
@@ -249,13 +313,31 @@ class GiteeSource {
   }
 
   async fetchLatest(onLog = () => {}) {
-    const base = `https://gitee.com/api/v5/repos/${this.owner}/${this.repo}/releases/latest`;
-    const url = this.token ? base + '?access_token=' + encodeURIComponent(this.token) : base;
+    const base = `https://gitee.com/api/v5/repos/${this.owner}/${this.repo}/releases`;
+    const q = this.token ? '?access_token=' + encodeURIComponent(this.token) : '';
 
     onLog('查询 Gitee 最新版本…');
-    let data;
+
+    // 与 GitHub 同样的坑：/releases/latest 会跳过 prerelease。
+    // Gitee 的 latest 接口行为类似，因此这里直接用列表接口自行挑最新。
+    let data = null;
     try {
-      data = await requestJson(url, { timeout: 20000 });
+      const list = await requestJson(`${base}${q}`, { timeout: 20000 });
+      if (!Array.isArray(list) || !list.length) {
+        return { ok: false, reason: '该仓库还没有发布任何 Release' };
+      }
+      const candidates = list.filter(x => !x.draft);
+      if (!candidates.length) {
+        return { ok: false, reason: '该仓库还没有发布任何 Release' };
+      }
+      data = candidates.reduce((best, cur) => {
+        const curV = String(cur.tag_name || '').replace(/^v/i, '');
+        const bestV = String(best.tag_name || '').replace(/^v/i, '');
+        return compareTag(curV, bestV) > 0 ? cur : best;
+      });
+      if (data.prerelease) {
+        onLog('注意：当前最新版本是预览版（' + data.tag_name + '）');
+      }
     } catch (e) {
       if (String(e.message).includes('404')) {
         return { ok: false, reason: '该仓库还没有发布任何 Release' };
@@ -271,7 +353,11 @@ class GiteeSource {
     const exeAsset = assets.find(a => /\.exe$/i.test(a.name));
 
     if (!ymlAsset || !exeAsset) {
-      return { ok: false, reason: 'Release 缺少 latest.yml 或安装包' };
+      return {
+        ok: false,
+        reason: 'Release 缺少 latest.yml 或安装包（当前附件：'
+          + (assets.map(a => a.name).join(', ') || '无') + '）',
+      };
     }
 
     const ymlUrl = ymlAsset.browser_download_url || ymlAsset.download_url;
@@ -295,6 +381,7 @@ class GiteeSource {
       notes: data.body || '',
       publishedAt: data.created_at || null,
       htmlUrl: data.html_url || '',
+      prerelease: !!data.prerelease,
       assets: {
         exeUrl,
         exeName: exeAsset.name,
@@ -388,6 +475,7 @@ module.exports = {
   request,
   requestJson,
   parseYml,
+  compareTag,
   GitHubSource,
   GiteeSource,
   GenericSource,

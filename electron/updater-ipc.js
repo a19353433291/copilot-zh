@@ -27,18 +27,30 @@ function setupUpdater(ctx) {
 
   /** 从 settings 组装更新源配置 */
   function readConfig() {
-    const parseRepo = (s) => {
-      const parts = String(s || '').split('/');
+    const parseRepo = (s, fallback) => {
+      const raw = String(s || '').trim() || fallback;
+      const parts = raw.split('/');
       return { owner: parts[0] || '', repo: parts[1] || '' };
     };
-    const gh = parseRepo(settings.get('updateGithubRepo'));
-    const gt = parseRepo(settings.get('updateGiteeRepo'));
+
+    // 兜底：设置项若为空（例如旧版 settings.json 没有这些键、
+    // 或用户手改坏了 JSON），回退到仓库默认值，
+    // 避免出现「未配置源地址」这种对用户毫无意义的报错。
+    const DEFAULT_REPO = 'a19353433291/copilot-zh';
+    const gh = parseRepo(settings.get('updateGithubRepo'), DEFAULT_REPO);
+    const gt = parseRepo(settings.get('updateGiteeRepo'), DEFAULT_REPO);
+
+    let source = settings.get('updateSource');
+    if (!['github', 'gitee', 'generic'].includes(source)) source = 'github';
+    // 选了自定义源但没填地址时，回退到 github，避免必然失败
+    const customUrl = String(settings.get('updateCustomUrl') || '').trim();
+    if (source === 'generic' && !customUrl) source = 'github';
 
     return {
-      source: settings.get('updateSource'),
+      source,
       github: gh,
       gitee: gt,
-      generic: { baseUrl: settings.get('updateCustomUrl') || '' },
+      generic: { baseUrl: customUrl },
     };
   }
 
