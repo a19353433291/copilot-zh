@@ -1,11 +1,17 @@
-// 渲染进程逻辑：分页导航、自定义控件、一键汉化。
+// 渲染进程逻辑：页面导航、主题、设置、汉化流程。
+//
+// 重构原则：
+//   - 业务逻辑（IPC 调用顺序、参数、错误处理）与原版完全一致
+//   - 只调整 DOM 选择器与渲染方式，不改变行为
+//   - 新增主题控制与 Toast 反馈，但不影响既有流程
+
 'use strict';
 
 const $ = id => document.getElementById(id);
 
 const state = {
   env: null,
-  sys: null,             // { elevated, ... }
+  sys: null,
   target: null,
   engines: [],
   selectedEngine: null,
@@ -33,32 +39,49 @@ function setStatus(text) {
   if (el) el.textContent = text;
 }
 
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/**
+ * 在概览页展示结果提示。
+ * 保留原有 #result 元素与 hidden 语义（测试依赖）。
+ */
 function showResult(kind, text) {
   const el = $('result');
+  if (!el) return;
   el.hidden = false;
   el.className = 'alert ' + (kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'info');
-  el.textContent = text;
-  // 结果总是在概览页展示，自动切过去
+  const iconName = kind === 'ok' ? 'check' : kind === 'err' ? 'alert' : 'info';
+  el.innerHTML = `<span class="alert-icon">${icon(iconName, 16)}</span><div class="alert-body">${escapeHtml(text)}</div>`;
   if (state.page !== 'home') switchPage('home');
 }
-function clearResult() { $('result').hidden = true; }
+
+function clearResult() {
+  const el = $('result');
+  if (el) el.hidden = true;
+}
 
 function setProgress(pct, msg) {
   const wrap = $('progress-wrap');
   if (!wrap) return;
   wrap.hidden = false;
-  $('progress-fill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  const fill = $('progress-fill');
+  if (fill) {
+    fill.classList.remove('indeterminate');
+    fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
   if (msg) $('progress-text').textContent = msg;
 }
+
 function hideProgress() {
   const w = $('progress-wrap');
-  if (w) { w.hidden = true; $('progress-fill').style.width = '0%'; }
-}
-
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  if (!w) return;
+  w.hidden = true;
+  const fill = $('progress-fill');
+  if (fill) { fill.style.width = '0%'; fill.classList.remove('indeterminate'); }
 }
 
 function canApply() {
@@ -67,9 +90,10 @@ function canApply() {
 
 function setBusy(busy, text) {
   state.busy = busy;
-  for (const id of ['btn-apply', 'btn-quick-apply', 'btn-revert', 'btn-quick-revert',
-                    'btn-locate', 'btn-choose', 'btn-import-pack', 'btn-check-update',
-                    'btn-audit', 'btn-cleanall']) {
+  const ids = ['btn-apply', 'btn-quick-apply', 'btn-revert', 'btn-quick-revert',
+               'btn-locate', 'btn-choose', 'btn-import-pack', 'btn-check-update',
+               'btn-audit', 'btn-cleanall'];
+  for (const id of ids) {
     const b = $(id);
     if (!b) continue;
     const isApply = (id === 'btn-apply' || id === 'btn-quick-apply');
@@ -79,54 +103,76 @@ function setBusy(busy, text) {
 }
 
 // ---------------------------------------------------------------------------
-// 分页导航
+// 页面导航
 // ---------------------------------------------------------------------------
 
 function switchPage(page) {
+  if (!PAGE_TITLES[page]) page = 'home';
   state.page = page;
+
   document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.page === page);
+    const on = el.dataset.page === page;
+    el.classList.toggle('active', on);
+    el.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   document.querySelectorAll('.page').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
+
   const title = $('page-title');
   if (title) title.textContent = PAGE_TITLES[page] || '';
+
   const pages = $('pages');
   if (pages) pages.scrollTop = 0;
+
+  // 主题分段控件在页面可见后才好测量位置
+  if (page === 'settings') {
+    requestAnimationFrame(() => Segmented.reprojectAll());
+  }
 }
 
 function initNav() {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.addEventListener('click', () => switchPage(el.dataset.page));
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        switchPage(el.dataset.page);
+      }
+    });
   });
 }
 
 // ---------------------------------------------------------------------------
-// 自定义下拉框
+// 通用下拉框（初始化后返回控制句柄）
 // ---------------------------------------------------------------------------
 
 function initSelect(wrapId, onChange) {
   const wrap = $(wrapId);
-  if (!wrap) return;
+  if (!wrap) return null;
   const trigger = wrap.querySelector('.select-trigger');
   const menu = wrap.querySelector('.select-menu');
   const label = wrap.querySelector('.select-label');
+  if (!trigger || !menu) return null;
 
   const close = () => {
     menu.hidden = true;
     trigger.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
   };
 
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
     const willOpen = menu.hidden;
-    // 关闭其它下拉框
     document.querySelectorAll('.select-menu').forEach(m => { m.hidden = true; });
-    document.querySelectorAll('.select-trigger').forEach(t => t.classList.remove('open'));
+    document.querySelectorAll('.select-trigger').forEach(t => {
+      t.classList.remove('open');
+      t.setAttribute('aria-expanded', 'false');
+    });
     if (willOpen) {
       menu.hidden = false;
       trigger.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
     }
   });
 
@@ -134,31 +180,37 @@ function initSelect(wrapId, onChange) {
     opt.addEventListener('click', (e) => {
       e.stopPropagation();
       const val = opt.dataset.value;
-      const text = opt.textContent.trim();
       trigger.dataset.value = val;
-      label.textContent = text;
-      menu.querySelectorAll('.select-option').forEach(o => o.classList.remove('active'));
+      if (label) label.textContent = opt.textContent.trim();
+      menu.querySelectorAll('.select-option').forEach(o => {
+        o.classList.remove('active');
+        o.setAttribute('aria-selected', 'false');
+      });
       opt.classList.add('active');
+      opt.setAttribute('aria-selected', 'true');
       close();
       if (onChange) onChange(val);
     });
   });
 
   document.addEventListener('click', close);
+
   return {
     set(value) {
       const opt = menu.querySelector(`.select-option[data-value="${value}"]`);
       if (!opt) return;
       trigger.dataset.value = value;
-      label.textContent = opt.textContent.trim();
+      if (label) label.textContent = opt.textContent.trim();
       menu.querySelectorAll('.select-option').forEach(o => o.classList.remove('active'));
       opt.classList.add('active');
     },
     setEnabled(on) { trigger.disabled = !on; },
+    get() { return trigger.dataset.value; },
   };
 }
 
 let intervalSelect = null;
+let glassSelect = null;
 
 // ---------------------------------------------------------------------------
 // 初始化
@@ -170,16 +222,18 @@ async function init() {
   state.env = await window.api.env();
   $('brand-version').textContent = 'v' + state.env.appVersion;
   $('status-dir').textContent = state.env.packsDir || '';
+  $('status-dir').title = state.env.packsDir || '';
 
   await checkAdmin();
-
   await Promise.all([locateTarget(), loadEngines(), loadPack()]);
   await loadSettings();
   await refreshAudit();
   renderApplyState();
 
-  // 默认停在概览页
   switchPage('home');
+
+  // 主题分段控件
+  await initThemeUI();
 }
 
 async function checkAdmin() {
@@ -190,18 +244,49 @@ async function checkAdmin() {
   }
   const hint = $('admin-hint');
   const btn = $('btn-elevate');
-  if (state.sys && state.sys.elevated) {
-    hint.hidden = true;
-    btn.hidden = true;
-  } else {
-    hint.hidden = false;
-    btn.hidden = false;
-  }
+  const elevated = !!(state.sys && state.sys.elevated);
+  if (hint) hint.hidden = elevated;
+  if (btn) btn.hidden = elevated;
 }
 
 $('btn-elevate').addEventListener('click', async () => {
   await window.api.relaunchAsAdmin();
 });
+
+// ---------------------------------------------------------------------------
+// 主题 UI
+// ---------------------------------------------------------------------------
+
+let themeSegmented = null;
+
+async function initThemeUI() {
+  themeSegmented = Segmented.init('seg-theme', (value) => {
+    ThemeController.set({ theme: value });
+    patchSettings({ theme: value });
+  });
+
+  // 动效开关
+  const motionEl = $('set-motion');
+  if (motionEl) {
+    motionEl.addEventListener('change', (e) => {
+      const v = e.target.checked ? 'on' : 'off';
+      ThemeController.set({ motion: v });
+      patchSettings({ motion: v });
+    });
+  }
+
+  // 玻璃强度
+  glassSelect = initSelect('sel-glass', (value) => {
+    ThemeController.set({ glass: value });
+    patchSettings({ glass: value });
+  });
+
+  // 系统主题变化时重绘（仅 system 模式内部会通知）
+  ThemeController.watchSystem();
+  window.addEventListener('theme:change', () => {
+    requestAnimationFrame(() => Segmented.reprojectAll());
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 常驻监控状态
@@ -213,54 +298,132 @@ function renderWatcher(st) {
   const title = $('home-title');
   const sub = $('home-sub');
   const pill = $('badge-watcher');
+  const pillDot = $('badge-watcher-dot');
   const btnInject = $('btn-inject-now');
   const btnLaunch = $('btn-launch-copilot');
   if (!st) return;
 
-  dot.className = 'status-dot';
-  sub.textContent = '';
-  btnInject.hidden = true;
-  btnLaunch.hidden = true;
+  if (dot) dot.className = 'status-dot lg';
+  if (pillDot) pillDot.className = 'status-dot';
+  if (sub) sub.textContent = '';
+  if (btnInject) btnInject.hidden = true;
+  if (btnLaunch) btnLaunch.hidden = true;
 
+  const setPill = (kind, text) => {
+    if (pill) pill.textContent = text;
+    if (pillDot) {
+      pillDot.className = 'status-dot' + (kind ? ' ' + kind : '');
+    }
+  };
+
+
+  // 运行详情区：始终按真实状态渲染（不是假数据）
+  renderWatcherDetail(st);
+  // 监控未开启
   if (!st.enabled) {
-    title.textContent = '常驻监控已关闭';
-    sub.textContent = '可在设置中开启「常驻监控自动汉化」';
-    pill.className = 'pill';
-    pill.textContent = '已关闭';
+    if (title) title.textContent = '常驻监控已关闭';
+    if (sub) sub.textContent = '可在设置中开启「常驻监控自动汉化」';
+    setPill('', '已关闭');
     return;
   }
+
+  // Copilot 未运行
   if (!st.copilotRunning) {
-    dot.classList.add('ok');
-    title.textContent = '监控运行中';
-    sub.textContent = '等待 GitHub Copilot 启动，启动后将自动汉化';
-    pill.className = 'pill ok';
-    pill.textContent = '运行中';
-    btnLaunch.hidden = false;
+    if (dot) dot.classList.add('ok');
+    if (title) title.textContent = '监控运行中';
+    if (sub) sub.textContent = '等待 GitHub Copilot 启动，启动后将自动汉化';
+    setPill('ok', '运行中');
+    if (btnLaunch) btnLaunch.hidden = false;
     return;
   }
+
+  // 已汉化
   if (st.injected) {
-    dot.classList.add('ok');
+    if (dot) dot.classList.add('ok');
     const t = st.lastInjectAt
       ? new Date(st.lastInjectAt).toLocaleTimeString('zh-CN', { hour12: false }) : '';
-    title.textContent = '界面已汉化';
-    sub.textContent = `Copilot 运行中${t ? ' · 汉化于 ' + t : ''}`;
-    pill.className = 'pill ok';
-    pill.textContent = '已汉化';
+    if (title) title.textContent = '界面已汉化';
+    if (sub) sub.textContent = `Copilot 运行中${t ? ' · 汉化于 ' + t : ''}`;
+    setPill('ok', '已汉化');
   } else {
-    dot.classList.add(st.lastError ? 'err' : 'wait');
-    title.textContent = st.lastError ? '注入未成功' : '正在注入…';
-    sub.textContent = st.lastError || '检测到 Copilot 运行中，即将完成汉化';
-    pill.className = 'pill ' + (st.lastError ? 'err' : 'warn');
-    pill.textContent = st.lastError ? '需处理' : '注入中';
+    // 注入中 / 失败
+    if (dot) dot.classList.add(st.lastError ? 'err' : 'busy');
+    if (title) title.textContent = st.lastError ? '注入未成功' : '正在注入…';
+    if (sub) sub.textContent = st.lastError || '检测到 Copilot 运行中，即将完成汉化';
+    setPill(st.lastError ? 'err' : 'warn', st.lastError ? '需处理' : '注入中');
   }
-  btnInject.hidden = false;
+  if (btnInject) btnInject.hidden = false;
+}
+
+/**
+ * 渲染概览页「运行详情」卡片。
+ * 所有字段均来自 watcher 真实状态，不使用静态假数据。
+ */
+function renderWatcherDetail(st) {
+  // 总体状态徽章
+  const badge = $('home-state-badge');
+  if (badge) {
+    let kind = '', text = '未知';
+    if (!st.enabled) { kind = ''; text = '监控关闭'; }
+    else if (!st.copilotRunning) { kind = 'info'; text = '待启动'; }
+    else if (st.injected) { kind = 'ok'; text = '已汉化'; }
+    else if (st.lastError) { kind = 'err'; text = '异常'; }
+    else { kind = 'warn'; text = '注入中'; }
+    badge.className = 'badge' + (kind ? ' ' + kind : '');
+    badge.textContent = text;
+  }
+
+  // Copilot 进程
+  const procEl = $('home-copilot-proc');
+  const procDot = $('home-proc-dot');
+  if (procEl) {
+    if (st.copilotRunning) {
+      procEl.textContent = st.copilotPid ? `运行中 · PID ${st.copilotPid}` : '运行中';
+      if (procDot) procDot.className = 'status-dot ok';
+    } else {
+      procEl.textContent = '未运行';
+      if (procDot) procDot.className = 'status-dot';
+    }
+  }
+
+  // 调试端口
+  const portEl = $('home-port');
+  const portBadge = $('home-port-badge');
+  if (portEl) {
+    if (st.injected) {
+      portEl.textContent = `已连接 · 127.0.0.1:${st.port || 9222}`;
+      if (portBadge) { portBadge.className = 'badge ok'; portBadge.textContent = '正常'; }
+    } else if (st.copilotRunning) {
+      portEl.textContent = `未连接 · 端口 ${st.port || 9222}`;
+      if (portBadge) { portBadge.className = 'badge warn'; portBadge.textContent = '待连接'; }
+    } else {
+      portEl.textContent = '应用未启动';
+      if (portBadge) { portBadge.className = 'badge'; portBadge.textContent = '—'; }
+    }
+  }
+
+  // 最近注入时间
+  const injEl = $('home-last-inject');
+  if (injEl) {
+    if (st.lastInjectAt) {
+      injEl.textContent = new Date(st.lastInjectAt).toLocaleString('zh-CN', { hour12: false });
+    } else if (st.lastError) {
+      injEl.textContent = '上次尝试失败';
+    } else {
+      injEl.textContent = '尚无记录';
+    }
+  }
 }
 
 $('btn-inject-now').addEventListener('click', async () => {
   setStatus('正在注入…');
   const r = await window.api.injectNow();
-  if (r.ok) setStatus('已注入');
-  else showResult('err', '注入失败：' + (r.reason || '未知原因'));
+  if (r.ok) {
+    setStatus('已注入');
+    Toast.ok('注入成功', '中文界面已应用');
+  } else {
+    showResult('err', '注入失败：' + (r.reason || '未知原因'));
+  }
 });
 
 $('btn-launch-copilot').addEventListener('click', async () => {
@@ -275,14 +438,19 @@ $('btn-launch-copilot').addEventListener('click', async () => {
 
 async function locateTarget() {
   const box = $('target-info');
-  box.className = 'row-value dim';
-  box.textContent = '正在检测…';
+  if (box) {
+    box.className = 'row-value t-muted';
+    box.textContent = '正在检测…';
+  }
   const r = await window.api.locateApp();
   if (!r.ok) {
     state.target = null;
-    box.className = 'row-value';
-    box.innerHTML = '<span class="warn-text">未自动找到，请手动选择</span>';
-    $('target-path').textContent = '';
+    if (box) {
+      box.className = 'row-value';
+      box.innerHTML = '<span class="t-warn">未自动找到，请手动选择</span>';
+    }
+    const pathEl = $('target-path');
+    if (pathEl) pathEl.textContent = '';
     updateStats();
     renderApplyState();
     return;
@@ -297,45 +465,74 @@ function renderTarget() {
   const t = state.target;
   const box = $('target-info');
   const pathEl = $('target-path');
+  if (!box) return;
+
   if (!t) {
-    box.className = 'row-value dim';
+    box.className = 'row-value t-muted';
     box.textContent = '未选择目标应用';
-    pathEl.textContent = '';
+    if (pathEl) pathEl.textContent = '';
     return;
   }
+
   box.className = 'row-value';
   const sigOk = t.signature === 'Valid';
   const sigWarn = t.signature === 'HashMismatch';
-  const sigSpan = sigOk ? '<span class="inline-ok">签名有效</span>'
-    : sigWarn ? '<span class="inline-danger">签名已失效</span>'
-      : '<span class="inline-muted">签名未知</span>';
+  const sigSpan = sigOk ? '<span class="t-ok">签名有效</span>'
+    : sigWarn ? '<span class="t-danger">签名已失效</span>'
+      : '<span class="t-muted">签名未知</span>';
   const name = t.exePath.split('\\').pop();
-  box.innerHTML = `${escapeHtml(name)} ${sigSpan}`;
-  pathEl.textContent = t.exePath;
+  box.innerHTML = `${escapeHtml(name)} · ${sigSpan}`;
+  if (pathEl) pathEl.textContent = t.exePath;
+
+  // 同步到概览页的运行详情
+  const homePath = $('home-target-path');
+  if (homePath) homePath.textContent = t.exePath;
 }
 
 function updateStats() {
   const t = state.target;
-  $('stat-version').textContent = t && t.version ? 'v' + t.version : '—';
-  const s = $('stat-sign');
-  if (t && t.signature === 'Valid') { s.textContent = '有效'; s.className = 'stat-value ok'; }
-  else if (t && t.signature === 'HashMismatch') { s.textContent = '已失效'; s.className = 'stat-value err'; }
-  else { s.textContent = '—'; s.className = 'stat-value'; }
 
-  const d = $('stat-dict');
-  if (state.pack) {
-    d.textContent = (state.pack.counts.texts || 0) + ' 条';
-    d.className = 'stat-value';
-  } else {
-    d.textContent = '无';
-    d.className = 'stat-value warn';
+  const verEl = $('stat-version');
+  if (verEl) {
+    const has = !!(t && t.version);
+    verEl.textContent = has ? 'v' + t.version : '—';
+    verEl.className = 'stat-value' + (has ? '' : ' dim');
+  }
+
+  const signEl = $('stat-sign');
+  if (signEl) {
+    if (t && t.signature === 'Valid') {
+      signEl.textContent = '有效';
+      signEl.className = 'stat-value ok';
+    } else if (t && t.signature === 'HashMismatch') {
+      signEl.textContent = '已失效';
+      signEl.className = 'stat-value err';
+    } else if (t) {
+      signEl.textContent = '未知';
+      signEl.className = 'stat-value warn';
+    } else {
+      signEl.textContent = '—';
+      signEl.className = 'stat-value dim';
+    }
+  }
+
+  const dictEl = $('stat-dict');
+  if (dictEl) {
+    if (state.pack) {
+      const n = (state.pack.counts && state.pack.counts.texts) || 0;
+      dictEl.className = 'stat-value';
+      animateNumber(dictEl, n);
+    } else {
+      dictEl.textContent = '无';
+      dictEl.className = 'stat-value warn';
+    }
   }
 }
 
 $('btn-locate').addEventListener('click', async () => {
   setBusy(true, '正在检测…');
   await locateTarget();
-  setBusy(false);
+  setBusy(false, '检测完成');
 });
 
 $('btn-choose').addEventListener('click', async () => {
@@ -356,7 +553,8 @@ async function loadEngines() {
   state.engines = await window.api.listEngines();
   if (!state.selectedEngine && state.engines.length) {
     state.selectedEngine = state.engines[0].id;
-    $('engine-hint').textContent = '需要管理员权限才能开启调试端口。';
+    const hint = $('engine-hint');
+    if (hint) hint.textContent = '需要管理员权限才能开启调试端口。';
   }
   renderEngines();
   renderApplyState();
@@ -364,39 +562,43 @@ async function loadEngines() {
 
 const ENGINE_INFO = {
   'runtime-inject': {
-    desc: '通过 WebView2 调试端口把翻译实时注入界面。不修改应用本体。',
-    tags: (c) => [
+    desc: '通过 WebView2 调试端口把翻译实时注入界面，不修改应用本体。',
+    tags: () => [
       { t: '不改本体', good: true },
-      { t: '签名保持完好', good: true },
+      { t: '签名完好', good: true },
       { t: '升级不失效', good: true },
       { t: '字典即时生效', good: true },
-      { t: '需管理员权限', bad: true },
+      { t: '需管理员', bad: true },
     ],
   },
   'binary-patch': {
     desc: '解开应用内嵌资源、替换文案后重新压缩写回。一次生效，无需常驻。',
     tags: () => [
       { t: '修改本体', bad: true },
-      { t: '签名会失效', bad: true },
+      { t: '签名失效', bad: true },
       { t: '每次更新需重打', bad: true },
-      { t: '无需常驻进程', good: true },
+      { t: '无需常驻', good: true },
     ],
   },
 };
 
 function renderEngines() {
   const box = $('engine-list');
+  if (!box) return;
+
   if (!state.engines.length) {
-    box.innerHTML = '<div class="row-value dim">当前平台没有可用引擎。</div>';
+    box.innerHTML = '<div class="row-value t-muted">当前平台没有可用引擎。</div>';
     return;
   }
+
   box.innerHTML = state.engines.map(e => {
     const meta = ENGINE_INFO[e.id] || { desc: '', tags: () => [] };
     const tags = meta.tags(e.capabilities)
       .map(x => `<span class="tag ${x.good ? 'good' : (x.bad ? 'bad' : '')}">${escapeHtml(x.t)}</span>`)
       .join('');
-    const sel = state.selectedEngine === e.id ? ' selected' : '';
-    return `<div class="engine-item${sel}" data-engine="${escapeHtml(e.id)}" role="radio" tabindex="0">
+    const selected = state.selectedEngine === e.id;
+    return `<div class="engine-item${selected ? ' selected' : ''}" data-engine="${escapeHtml(e.id)}"
+      role="radio" aria-checked="${selected}" tabindex="0">
       <div class="radio-mark"></div>
       <div class="engine-body">
         <div class="engine-title">${escapeHtml(e.displayName)}</div>
@@ -409,15 +611,18 @@ function renderEngines() {
   box.querySelectorAll('.engine-item').forEach(el => {
     el.addEventListener('click', () => selectEngine(el.dataset.engine));
     el.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectEngine(el.dataset.engine); }
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        selectEngine(el.dataset.engine);
+      }
     });
   });
 }
 
 function selectEngine(id) {
   state.selectedEngine = id;
-  $('engine-hint').textContent = id === 'runtime-inject'
-    ? '需要管理员权限才能开启调试端口。' : '';
+  const hint = $('engine-hint');
+  if (hint) hint.textContent = id === 'runtime-inject' ? '需要管理员权限才能开启调试端口。' : '';
   renderEngines();
   renderApplyState();
 }
@@ -430,15 +635,19 @@ async function loadPack() {
   const r = await window.api.currentPack();
   const box = $('pack-info');
   const hint = $('pack-hint');
+
   if (!r.ok) {
     state.pack = null;
-    box.className = 'row-value dim';
-    box.textContent = '尚未安装字典包';
-    hint.textContent = '';
+    if (box) {
+      box.className = 'row-desc t-muted';
+      box.textContent = '尚未安装字典包';
+    }
+    if (hint) hint.textContent = '';
     updateStats();
     renderApplyState();
     return;
   }
+
   state.pack = r;
   renderPack();
   updateStats();
@@ -451,10 +660,16 @@ function renderPack() {
   const hint = $('pack-hint');
   const m = p.meta || {};
   const c = p.counts || {};
-  box.className = 'row-value';
-  box.innerHTML = `v${escapeHtml(m.packVersion || '?')} ` +
-    `<span class="inline-ok">已校验</span>`;
-  hint.textContent = `${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则 · ${c.attrs || 0} 条属性`;
+
+  if (box) {
+    box.className = 'row-desc';
+    box.innerHTML = `v${escapeHtml(m.packVersion || '?')} · ` +
+      `<span class="t-ok">签名与哈希校验通过</span>`;
+  }
+  if (hint) {
+    hint.textContent = `${c.texts || 0} 条文本 · ${c.patterns || 0} 条正则 · ` +
+      `${c.attrs || 0} 条属性 · ${c.attrPatterns || 0} 条属性正则`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -465,26 +680,45 @@ async function loadSettings() {
   const r = await window.api.getSettings();
   state.settings = r.data;
 
-  $('set-launch-after-apply').checked = !!r.data.launchCopilotAfterApply;
-  $('set-auto-restart').checked = r.data.autoRestartCopilot !== false;
-  $('set-close-on-revert').checked = r.data.closeCopilotOnRevert !== false;
-  $('set-auto-inject').checked = !!r.data.autoInjectOnStart;
-  $('set-run-at-login').checked = !!r.data.runAtLogin;
-  $('set-minimize-tray').checked = !!r.data.minimizeToTray;
-  $('settings-datadir').textContent = state.env.userDir || '';
+  const setCheck = (id, v) => {
+    const el = $(id);
+    if (el) el.checked = !!v;
+  };
 
+  setCheck('set-launch-after-apply', r.data.launchCopilotAfterApply);
+  setCheck('set-auto-restart', r.data.autoRestartCopilot !== false);
+  setCheck('set-close-on-revert', r.data.closeCopilotOnRevert !== false);
+  setCheck('set-auto-inject', r.data.autoInjectOnStart);
+  setCheck('set-run-at-login', r.data.runAtLogin);
+  setCheck('set-minimize-tray', r.data.minimizeToTray);
+  setCheck('set-motion', (r.data.motion || 'on') !== 'off');
+
+  const dirEl = $('settings-datadir');
+  if (dirEl) dirEl.textContent = state.env.userDir || '';
+
+  // 同步主题到 DOM（主进程保存的值是唯一真相）
+  ThemeController.syncFromSettings(r.data);
+  if (themeSegmented) themeSegmented.set(r.data.theme || 'system');
+  if (glassSelect) glassSelect.set(r.data.glass || 'normal');
+
+  // 间隔下拉
   if (!intervalSelect) {
     intervalSelect = initSelect('sel-interval', (val) => {
       patchSettings({ watchIntervalMs: Number(val) });
     });
   }
-  intervalSelect.set(String(r.data.watchIntervalMs));
-  intervalSelect.setEnabled(!!r.data.autoInjectOnStart);
+  if (intervalSelect) {
+    intervalSelect.set(String(r.data.watchIntervalMs));
+    intervalSelect.setEnabled(!!r.data.autoInjectOnStart);
+  }
 
   if (!r.autostartSupported) {
-    $('set-run-at-login').disabled = true;
-    $('autostart-hint').textContent = '当前平台不支持';
+    const el = $('set-run-at-login');
+    if (el) el.disabled = true;
+    const hint = $('autostart-hint');
+    if (hint) hint.textContent = '当前平台不支持';
   }
+
   if (r.watcher) renderWatcher(r.watcher);
 }
 
@@ -523,7 +757,11 @@ $('btn-open-data-2').addEventListener('click', () => window.api.openDataFolder()
 
 $('btn-reset-settings').addEventListener('click', async () => {
   const r = await window.api.resetSettings();
-  if (r.ok) { setStatus('已恢复默认设置'); await loadSettings(); }
+  if (r.ok) {
+    setStatus('已恢复默认设置');
+    Toast.ok('已恢复默认设置');
+    await loadSettings();
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -541,7 +779,6 @@ function renderApplyState() {
 async function doApply(btnId) {
   if (!canApply() || state.busy) return;
 
-  // 未提权时直接提示，避免走完流程才在最后失败
   if (state.sys && state.sys.elevated === false) {
     showResult('err',
       '需要管理员权限才能汉化。\n\n请点击右上角「以管理员身份重启」，或关闭程序后右键选择「以管理员身份运行」。');
@@ -551,14 +788,13 @@ async function doApply(btnId) {
   clearResult();
   setBusy(true, '正在汉化…');
   const btn = $(btnId);
-  if (btn) btn.classList.add('loading');
+  if (btn) btn.classList.add('is-loading');
   setProgress(0, '准备中…');
 
   const target = { exePath: state.target.exePath, version: state.target.version };
-
   const r = await window.api.apply(state.selectedEngine, target, state.pack.dict);
 
-  if (btn) btn.classList.remove('loading');
+  if (btn) btn.classList.remove('is-loading');
   setBusy(false, r.ok ? '汉化完成' : '汉化未完成');
 
   if (r.ok) {
@@ -566,13 +802,12 @@ async function doApply(btnId) {
     const stats = r.stats || {};
     const acts = (r.actions || []).length ? '\n' + r.actions.join('\n') : '';
     showResult('ok',
-      `汉化已生效：替换 ${stats.replaced || 0} 处文案${acts}\n\n已切换验证通过，可以正常使用 GitHub Copilot。`);
+      `汉化已生效：替换 ${stats.replaced || 0} 处文案${acts}\n\n已验证通过，可以正常使用 GitHub Copilot。`);
+    Toast.ok('汉化完成', `替换 ${stats.replaced || 0} 处文案`);
   } else {
     hideProgress();
     let msg = r.reason || '未知原因';
-    if (r.code === 'NO_ADMIN') {
-      msg += '\n\n请点击右上角「以管理员身份重启」。';
-    }
+    if (r.code === 'NO_ADMIN') msg += '\n\n请点击右上角「以管理员身份重启」。';
     showResult('err', msg);
   }
 }
@@ -610,6 +845,7 @@ async function doRevert() {
     msg += '\n\n提示：若 Copilot 正在运行，需重启它才会显示英文。';
   }
   showResult('info', msg);
+  Toast.info('已还原英文');
 }
 
 $('btn-revert').addEventListener('click', doRevert);
@@ -626,6 +862,7 @@ $('btn-import-pack').addEventListener('click', async () => {
   if (r.ok) {
     await loadPack();
     showResult('ok', `字典包已安装：${r.meta.packVersion}（文本 ${r.counts.texts} 条）`);
+    Toast.ok('字典包已更新', `版本 ${r.meta.packVersion}`);
   } else if (r.reason !== 'cancelled') {
     showResult('err', '导入失败：' + r.reason);
   }
@@ -646,20 +883,28 @@ $('btn-open-packs').addEventListener('click', () => window.api.openPacksFolder()
 
 async function refreshAudit() {
   const box = $('audit-info');
+  if (!box) return;
   box.className = 'audit-box';
   box.textContent = '正在检查…';
+
   const r = await window.api.cleanupAudit();
   if (!r.total) {
     box.className = 'audit-box clean';
-    box.textContent = '未发现残留，系统干净。';
-    $('btn-cleanall').disabled = true;
+    box.innerHTML = `${icon('check', 16)}<span>未发现残留，系统干净</span>`;
+    const btn = $('btn-cleanall');
+    if (btn) btn.disabled = true;
     return;
   }
-  $('btn-cleanall').disabled = false;
+
+  const btn = $('btn-cleanall');
+  if (btn) btn.disabled = false;
+
   box.className = 'audit-box';
   const rows = r.traces.map(t => {
     const details = t.items.map(i => {
-      if (i.path) return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}`;
+      if (i.path) {
+        return `${escapeHtml(i.path)}${i.files !== undefined ? ` (${i.files} 个文件)` : ''}`;
+      }
       if (i.hive) return `${escapeHtml(i.hive)} · ${escapeHtml(i.value)}`;
       return escapeHtml(JSON.stringify(i));
     }).join('<br>');
@@ -677,6 +922,7 @@ $('btn-open-data').addEventListener('click', () => window.api.openDataFolder());
 $('btn-cleanall').addEventListener('click', async () => {
   const ok = confirm('确定要彻底清理所有残留吗？\n\n将删除：\n· WebView2 调试端口策略\n· 所有字典包与用户数据\n· 缓存与日志\n\n清理后程序会自动退出以完成最后一步删除，需要重新导入字典包才能汉化。');
   if (!ok) return;
+
   setBusy(true, '正在清理…');
   const r = await window.api.cleanupAll();
   setBusy(false, r.ok ? '清理完成' : '部分清理失败');
@@ -700,7 +946,6 @@ $('btn-cleanall').addEventListener('click', async () => {
   showResult(r.errors && r.errors.length ? 'err' : 'ok', lines.join('\n') || '未发现需要清理的内容。');
 
   if (r.needRestart) {
-    // 用户数据目录被占用，必须退出本程序才能删除
     const quit = confirm('需要退出本程序才能完成最后的数据目录删除。\n\n现在退出吗？退出后剩余文件会自动清除。');
     if (quit) { window.api.quitApp(); return; }
     lines.push('');
@@ -712,22 +957,27 @@ $('btn-cleanall').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 事件监听
+// 主进程事件
 // ---------------------------------------------------------------------------
 
 window.api.onProgress(({ pct, msg }) => setProgress(pct, msg));
 window.api.onWatcherStatus((st) => renderWatcher(st));
+
 window.api.onWatcherInjected((info) => {
   setStatus(`已自动汉化 Copilot（${info.replaced} 处）`);
 });
+
 window.api.onWatcherError((e) => {
   setStatus('监控提示：' + e.message);
 });
+
 window.api.onWatcherPolicyWritten((info) => {
   showResult('info',
     info.reason + '\n\n请关闭 GitHub Copilot 后重新打开，之后会自动汉化。');
+  Toast.warn('需要重启 Copilot 一次', '调试端口已开启');
 });
 
+// 启动
 init().catch(e => {
   showResult('err', '初始化失败：' + e.message);
 });

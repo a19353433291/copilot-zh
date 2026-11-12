@@ -10,6 +10,24 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * 枚举型设置的白名单。
+ * 这些设置只能取固定值，非法值会被 set() 拒绝，
+ * 避免脏数据写进 settings.json 导致界面异常。
+ */
+const ENUMS = {
+  theme: ['light', 'dark', 'system'],
+  motion: ['on', 'off'],
+  glass: ['off', 'normal', 'strong'],
+};
+
+/** 校验某个键的值是否合法 */
+function isValidValue(key, value) {
+  const allowed = ENUMS[key];
+  if (!allowed) return true;
+  return allowed.includes(value);
+}
+
 const DEFAULTS = {
   /**
    * 汉化后是否自动启动 GitHub Copilot。
@@ -54,6 +72,24 @@ const DEFAULTS = {
    * 常驻模式下需要这个，否则关窗口就停了监控。
    */
   minimizeToTray: true,
+
+  /**
+   * 界面主题：light / dark / system
+   * 默认 system：跟随 Windows 深浅色，重启后自动恢复。
+   */
+  theme: 'system',
+
+  /**
+   * 界面动效开关：on / off
+   * off 时把过渡时长压到 1ms，保留状态切换但不做动画。
+   */
+  motion: 'on',
+
+  /**
+   * 液态玻璃质感强度：off / normal / strong
+   * off 可显著降低 GPU 占用（关闭 backdrop-filter）。
+   */
+  glass: 'normal',
 };
 
 class Settings {
@@ -116,6 +152,8 @@ class Settings {
       // 类型校验：保持与默认值同类型
       const expect = typeof DEFAULTS[k];
       if (typeof v !== expect) continue;
+      // 值域校验：枚举型设置只接受白名单值，避免脏数据导致主题失效
+      if (!isValidValue(k, v)) continue;
       this.data[k] = v;
       changed.push(k);
     }

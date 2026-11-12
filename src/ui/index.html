@@ -1,54 +1,64 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="system" data-motion="on" data-glass="normal">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>Copilot 汉化助手</title>
 <link rel="icon" type="image/png" href="../../build/icon-32.png">
-<link rel="stylesheet" href="style.css">
+
+<!-- 设计系统：顺序不能乱（tokens → themes → base → layout → components → pages） -->
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/themes.css">
+<link rel="stylesheet" href="styles/base.css">
+<link rel="stylesheet" href="styles/layout.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/pages.css">
 </head>
 <body>
+
+<!-- 背景光晕层 -->
+<div class="app-bg" aria-hidden="true"></div>
+
 <div class="app">
 
-  <!-- 侧边导航 -->
+  <!-- ==================== 侧边栏 ==================== -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <img class="logo" src="../../build/icon-64.png" alt="Copilot 汉化助手" width="32" height="32">
+      <img class="brand-logo" src="../../build/icon-64.png" alt="Copilot 汉化助手" width="32" height="32">
       <div class="brand-meta">
         <div class="brand-name">Copilot 汉化助手</div>
         <div class="brand-ver" id="brand-version">—</div>
       </div>
     </div>
 
-    <nav class="nav" id="nav">
-      <button class="nav-item active" data-page="home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <nav class="nav" id="nav" role="tablist" aria-label="主导航">
+      <button class="nav-item active" data-page="home" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>
         </svg>
         <span>概览</span>
       </button>
-      <button class="nav-item" data-page="translate">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="nav-item" data-page="translate" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 5h10M9 3v2c0 4-2 7-5 9"/><path d="M6 12c2 3 5 5 8 6"/><path d="M13 20l4-10 4 10"/><path d="M14.5 17h5"/>
         </svg>
         <span>汉化</span>
       </button>
-      <button class="nav-item" data-page="dict">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/>
-          <path d="M8 7h8M8 11h6"/>
+      <button class="nav-item" data-page="dict" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8M8 11h6"/>
         </svg>
         <span>字典包</span>
       </button>
-      <button class="nav-item" data-page="cleanup">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="nav-item" data-page="cleanup" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/>
         </svg>
         <span>清理</span>
       </button>
-      <button class="nav-item" data-page="settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="nav-item" data-page="settings" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.42.5.75.94.91H21a2 2 0 1 1 0 4h-.09c-.44.16-.8.49-.94.91z"/>
         </svg>
@@ -57,235 +67,463 @@
     </nav>
 
     <div class="sidebar-foot">
-      <span class="pill" id="badge-watcher">—</span>
+      <div class="sidebar-status">
+        <span class="status-dot" id="badge-watcher-dot"></span>
+        <span id="badge-watcher">初始化…</span>
+      </div>
     </div>
   </aside>
 
-  <!-- 主区域 -->
+  <!-- ==================== 主区域 ==================== -->
   <div class="content-area">
 
+    <!-- 顶栏 -->
     <header class="topbar">
-      <div class="topbar-title" id="page-title">概览</div>
+      <div class="topbar-left">
+        <span class="page-title" id="page-title">概览</span>
+      </div>
       <div class="topbar-right">
         <span class="admin-hint" id="admin-hint" hidden>未以管理员身份运行</span>
         <button class="btn btn-sm btn-primary" id="btn-elevate" hidden>以管理员身份重启</button>
       </div>
     </header>
 
+    <!-- 页面容器 -->
     <main class="pages" id="pages">
 
       <!-- ========== 概览 ========== -->
       <section class="page active" data-page="home">
-        <div class="status-card">
-          <span class="status-dot" id="home-dot"></span>
-          <div class="status-content">
-            <div class="status-title" id="home-title">正在初始化…</div>
-            <div class="status-sub" id="home-sub"></div>
-          </div>
-          <div class="status-actions">
-            <button class="btn btn-sm" id="btn-inject-now" hidden>立即汉化</button>
-            <button class="btn btn-sm" id="btn-launch-copilot" hidden>启动 Copilot</button>
-          </div>
-        </div>
+        <div class="page-inner">
 
-        <div class="stat-grid">
-          <div class="stat">
-            <div class="stat-label">目标版本</div>
-            <div class="stat-value" id="stat-version">—</div>
+          <!-- 主状态卡 -->
+          <div class="hero-status card" id="hero-card">
+            <div class="hero-status-main">
+              <div class="hero-status-icon">
+                <span class="status-dot lg" id="home-dot"></span>
+              </div>
+              <div class="hero-status-text">
+                <div class="hero-status-title" id="home-title">正在初始化…</div>
+                <div class="hero-status-sub" id="home-sub"></div>
+              </div>
+            </div>
+            <div class="hero-status-actions">
+              <button class="btn btn-sm" id="btn-inject-now" hidden>立即汉化</button>
+              <button class="btn btn-sm" id="btn-launch-copilot" hidden>启动 Copilot</button>
+            </div>
           </div>
-          <div class="stat">
-            <div class="stat-label">签名状态</div>
-            <div class="stat-value" id="stat-sign">—</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">字典条目</div>
-            <div class="stat-value" id="stat-dict">—</div>
-          </div>
-        </div>
 
-        <div class="quick-actions">
-          <button class="btn btn-primary btn-lg" id="btn-quick-apply">一键汉化</button>
-          <button class="btn btn-lg" id="btn-quick-revert">还原英文</button>
-        </div>
+          <!-- 统计格 -->
+          <div class="stat-grid">
+            <div class="stat-card card card-hover">
+              <div class="stat-card-head">
+                <span class="stat-label">目标版本</span>
+                <span class="stat-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
+                </span>
+              </div>
+              <div class="stat-value" id="stat-version">—</div>
+            </div>
 
-        <div class="progress" id="progress-wrap" hidden>
-          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-          <div class="progress-text" id="progress-text">准备中…</div>
+            <div class="stat-card card card-hover">
+              <div class="stat-card-head">
+                <span class="stat-label">签名状态</span>
+                <span class="stat-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                </span>
+              </div>
+              <div class="stat-value" id="stat-sign">—</div>
+            </div>
+
+            <div class="stat-card card card-hover">
+              <div class="stat-card-head">
+                <span class="stat-label">字典条目</span>
+                <span class="stat-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8M8 11h6"/></svg>
+                </span>
+              </div>
+              <div class="stat-value" id="stat-dict">—</div>
+            </div>
+          </div>
+
+          <!-- 主操作 -->
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" id="btn-quick-apply">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              一键汉化
+            </button>
+            <button class="btn btn-lg" id="btn-quick-revert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              还原英文
+            </button>
+          </div>
+
+          <div class="progress" id="progress-wrap" hidden>
+            <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="progress-text" id="progress-text">准备中…</div>
+          </div>
+
+          <div class="alert" id="result" hidden></div>
+
+          <!-- 详细状态：把业务里有但概览没展示的信息补齐，消除大片空白 -->
+          <div class="card" id="home-detail-card">
+            <div class="card-head">
+              <span class="card-title">运行详情</span>
+              <span class="badge" id="home-state-badge">—</span>
+            </div>
+            <div class="card-body card-body-flush">
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">GitHub Copilot 进程</div>
+                  <div class="row-desc" id="home-copilot-proc">未检测</div>
+                </div>
+                <span class="status-dot" id="home-proc-dot"></span>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">WebView2 调试端口</div>
+                  <div class="row-desc" id="home-port">—</div>
+                </div>
+                <span class="badge" id="home-port-badge">—</span>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">最近注入时间</div>
+                  <div class="row-desc" id="home-last-inject">尚无记录</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">目标应用路径</div>
+                  <div class="row-desc mono" id="home-target-path">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div class="alert" id="result" hidden></div>
       </section>
 
       <!-- ========== 汉化 ========== -->
       <section class="page" data-page="translate">
-        <div class="group">
-          <div class="group-title">目标应用</div>
-          <div class="row">
-            <div class="row-main">
-              <div class="row-value" id="target-info">正在检测…</div>
-              <div class="row-hint" id="target-path"></div>
+        <div class="page-inner">
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">目标应用</span>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-ghost" id="btn-locate">重新检测</button>
+                <button class="btn btn-sm btn-ghost" id="btn-choose">手动选择</button>
+              </div>
             </div>
-            <div class="row-actions">
-              <button class="link-btn" id="btn-locate">重新检测</button>
-              <button class="link-btn" id="btn-choose">手动选择</button>
+            <div class="card-body card-body-flush">
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-value" id="target-info">正在检测…</div>
+                  <div class="row-desc mono" id="target-path"></div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="group">
-          <div class="group-title">汉化模式</div>
-          <div class="engine-list" id="engine-list"></div>
-          <p class="footnote" id="engine-hint"></p>
-        </div>
-
-        <div class="group">
-          <div class="group-title">操作</div>
-          <div class="primary-actions">
-            <button class="btn btn-primary btn-lg" id="btn-apply" disabled>执行汉化</button>
-            <button class="btn btn-lg" id="btn-revert">还原英文</button>
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">汉化模式</span>
+            </div>
+            <div class="card-body">
+              <div class="engine-list" id="engine-list"></div>
+              <p class="footnote" id="engine-hint"></p>
+            </div>
           </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">操作</span>
+            </div>
+            <div class="card-body">
+              <div class="primary-actions">
+                <button class="btn btn-primary btn-lg" id="btn-apply" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                  执行汉化
+                </button>
+                <button class="btn btn-lg" id="btn-revert">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+                  还原英文
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
       <!-- ========== 字典包 ========== -->
       <section class="page" data-page="dict">
-        <div class="group">
-          <div class="group-title">当前字典</div>
-          <div class="row">
-            <div class="row-main">
-              <div class="row-value" id="pack-info">尚未安装</div>
-              <div class="row-hint" id="pack-hint"></div>
+        <div class="page-inner">
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">当前字典包</span>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-ghost" id="btn-open-packs">打开目录</button>
+                <button class="btn btn-sm btn-ghost" id="btn-check-update">检查更新</button>
+              </div>
             </div>
-            <div class="row-actions">
-              <button class="link-btn" id="btn-open-packs">打开目录</button>
-              <button class="link-btn" id="btn-check-update">检查更新</button>
+            <div class="card-body card-body-flush">
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">版本与校验</div>
+                  <div class="row-desc" id="pack-info">尚未安装</div>
+                  <div class="row-desc" id="pack-hint"></div>
+                </div>
+              </div>
+            </div>
+            <div class="card-foot">
+              <button class="btn btn-sm" id="btn-import-pack">导入字典包…</button>
             </div>
           </div>
-          <div class="row-actions standalone">
-            <button class="btn btn-sm" id="btn-import-pack">导入字典包…</button>
-          </div>
+
         </div>
       </section>
 
       <!-- ========== 清理 ========== -->
       <section class="page" data-page="cleanup">
-        <div class="group">
-          <div class="group-title">残留检查</div>
-          <div class="audit-box" id="audit-info">尚未检查</div>
-          <div class="row-actions standalone">
-            <button class="btn btn-sm" id="btn-audit">重新检查</button>
-            <button class="btn btn-sm btn-danger-ghost" id="btn-cleanall">彻底清理</button>
-            <button class="link-btn" id="btn-open-data">打开数据目录</button>
+        <div class="page-inner">
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">残留检查</span>
+              <button class="btn btn-sm btn-ghost" id="btn-audit">重新检查</button>
+            </div>
+            <div class="card-body">
+              <div class="audit-box" id="audit-info">尚未检查</div>
+            </div>
+            <div class="card-foot">
+              <button class="btn btn-sm btn-ghost" id="btn-open-data">打开数据目录</button>
+              <button class="btn btn-sm btn-danger" id="btn-cleanall">彻底清理</button>
+            </div>
           </div>
+
         </div>
       </section>
 
       <!-- ========== 设置 ========== -->
       <section class="page" data-page="settings">
-        <div class="group">
-          <div class="group-title">汉化行为</div>
+        <div class="page-inner">
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">汉化后同步启动 GitHub Copilot</div>
-              <div class="setting-desc">执行汉化成功后，若 Copilot 未运行则自动启动</div>
+          <!-- 外观 -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">外观</span>
             </div>
-            <span class="switch"><input type="checkbox" id="set-launch-after-apply"><span class="track"></span></span>
-          </div>
+            <div class="card-body card-body-flush">
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">主题模式</div>
+                  <div class="row-desc">跟随系统时会自动响应 Windows 的浅色 / 深色设置</div>
+                </div>
+                <div class="segmented" id="seg-theme" role="radiogroup" aria-label="主题模式">
+                  <button class="segmented-item" data-value="light" role="radio" aria-checked="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    浅色
+                  </button>
+                  <button class="segmented-item" data-value="dark" role="radio" aria-checked="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    深色
+                  </button>
+                  <button class="segmented-item active" data-value="system" role="radio" aria-checked="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    跟随系统
+                  </button>
+                </div>
+              </div>
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">自动重启 Copilot 以启用调试端口</div>
-              <div class="setting-desc">若 Copilot 正在运行但端口未开启，自动重启它完成汉化</div>
-            </div>
-            <span class="switch"><input type="checkbox" id="set-auto-restart"><span class="track"></span></span>
-          </div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">界面动效</div>
+                  <div class="row-desc">页面切换、悬停反馈等过渡动画</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-motion">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">还原英文时自动关闭 Copilot</div>
-              <div class="setting-desc">还原后需重启 Copilot 才会真正显示英文，建议保持开启</div>
-            </div>
-            <span class="switch"><input type="checkbox" id="set-close-on-revert"><span class="track"></span></span>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">常驻监控自动汉化</div>
-              <div class="setting-desc">Copilot 启动或页面刷新时自动注入中文</div>
-            </div>
-            <span class="switch"><input type="checkbox" id="set-auto-inject"><span class="track"></span></span>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">检查间隔</div>
-              <div class="setting-desc">越小越灵敏，CPU 开销略高</div>
-            </div>
-            <div class="select-wrap" id="sel-interval">
-              <button class="select-trigger" data-value="1500">
-                <span class="select-label">1.5 秒（推荐）</span>
-                <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="select-menu" hidden>
-                <button class="select-option" data-value="800">0.8 秒（最灵敏）</button>
-                <button class="select-option active" data-value="1500">1.5 秒（推荐）</button>
-                <button class="select-option" data-value="3000">3 秒（省电）</button>
-                <button class="select-option" data-value="5000">5 秒（最省电）</button>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">玻璃质感</div>
+                  <div class="row-desc">液态玻璃模糊强度，关闭可降低 GPU 占用</div>
+                </div>
+                <div class="select" id="sel-glass">
+                  <button class="select-trigger" data-value="normal">
+                    <span class="select-label">标准</span>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="select-menu" hidden>
+                    <button class="select-option" data-value="off">关闭（最省资源）</button>
+                    <button class="select-option active" data-value="normal">标准</button>
+                    <button class="select-option" data-value="strong">增强</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="group">
-          <div class="group-title">系统集成</div>
-
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">开机自动启动</div>
-              <div class="setting-desc" id="autostart-hint">随 Windows 启动并静默运行</div>
+          <!-- 汉化行为 -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">汉化行为</span>
             </div>
-            <span class="switch"><input type="checkbox" id="set-run-at-login"><span class="track"></span></span>
+            <div class="card-body card-body-flush">
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">汉化后同步启动 GitHub Copilot</div>
+                  <div class="row-desc">执行汉化成功后，若 Copilot 未运行则自动启动</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-launch-after-apply">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">自动重启 Copilot 以启用调试端口</div>
+                  <div class="row-desc">若 Copilot 正在运行但端口未开启，自动重启它完成汉化</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-auto-restart">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">还原英文时自动关闭 Copilot</div>
+                  <div class="row-desc">还原后需重启 Copilot 才会真正显示英文，建议保持开启</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-close-on-revert">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">常驻监控自动汉化</div>
+                  <div class="row-desc">Copilot 启动或页面刷新时自动注入中文</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-auto-inject">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">检查间隔</div>
+                  <div class="row-desc">越小越灵敏，CPU 开销略高</div>
+                </div>
+                <div class="select" id="sel-interval">
+                  <button class="select-trigger" data-value="1500">
+                    <span class="select-label">1.5 秒（推荐）</span>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="select-menu" hidden>
+                    <button class="select-option" data-value="800">0.8 秒（最灵敏）</button>
+                    <button class="select-option active" data-value="1500">1.5 秒（推荐）</button>
+                    <button class="select-option" data-value="3000">3 秒（省电）</button>
+                    <button class="select-option" data-value="5000">5 秒（最省电）</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">关闭窗口时最小化到托盘</div>
-              <div class="setting-desc">关闭后常驻监控会停止，建议保持开启</div>
+          <!-- 系统集成 -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">系统集成</span>
             </div>
-            <span class="switch"><input type="checkbox" id="set-minimize-tray"><span class="track"></span></span>
-          </div>
-        </div>
+            <div class="card-body card-body-flush">
 
-        <div class="group">
-          <div class="group-title">数据</div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">开机自动启动</div>
+                  <div class="row-desc" id="autostart-hint">随 Windows 启动并静默运行</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-run-at-login">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">数据目录</div>
-              <div class="setting-desc mono-sm" id="settings-datadir"></div>
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">关闭窗口时最小化到托盘</div>
+                  <div class="row-desc">关闭后常驻监控会停止，建议保持开启</div>
+                </div>
+                <span class="toggle">
+                  <input type="checkbox" id="set-minimize-tray">
+                  <span class="toggle-track"></span>
+                </span>
+              </div>
+
             </div>
-            <button class="link-btn" id="btn-open-data-2">打开</button>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-name">恢复默认设置</div>
-              <div class="setting-desc">重置所有选项为初始值</div>
+          <!-- 数据 -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">数据</span>
             </div>
-            <button class="link-btn" id="btn-reset-settings">恢复默认</button>
+            <div class="card-body card-body-flush">
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">数据目录</div>
+                  <div class="row-desc mono" id="settings-datadir"></div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn btn-sm btn-ghost" id="btn-open-data-2">打开</button>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row-main">
+                  <div class="row-title">恢复默认设置</div>
+                  <div class="row-desc">重置所有选项为初始值，不影响字典包</div>
+                </div>
+                <div class="row-actions">
+                  <button class="btn btn-sm btn-ghost" id="btn-reset-settings">恢复默认</button>
+                </div>
+              </div>
+
+            </div>
           </div>
+
         </div>
       </section>
 
     </main>
 
-    <footer class="footer">
-      <span id="status-text">就绪</span>
-      <span class="footer-right" id="status-dir" title=""></span>
+    <!-- 状态栏 -->
+    <footer class="statusbar">
+      <div class="statusbar-left">
+        <span id="status-text">就绪</span>
+      </div>
+      <span class="statusbar-path" id="status-dir" title=""></span>
     </footer>
+
   </div>
 </div>
 
+<!-- Toast 容器 -->
+<div class="toast-host" id="toast-host" role="status" aria-live="polite"></div>
+
+<script src="theme.js"></script>
+<script src="ui.js"></script>
 <script src="renderer.js"></script>
 </body>
 </html>

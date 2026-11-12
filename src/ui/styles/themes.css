@@ -1,0 +1,207 @@
+/* ==========================================================================
+   Themes — 亮色 / 暗色 / 跟随系统
+   --------------------------------------------------------------------------
+   机制：
+     :root                       → 默认亮色（无 JS 时的兜底）
+     :root[data-theme="light"]   → 显式亮色
+     :root[data-theme="dark"]    → 显式暗色
+     :root[data-theme="system"]  → 由 prefers-color-scheme 决定
+
+   为什么 system 用 media query 而不是 JS 监听：
+     CSS 的 prefers-color-scheme 随系统即时变化，无需 JS 参与，
+     重启后也自动恢复。JS 只在需要额外逻辑（如托盘图标配色）时读取。
+   ========================================================================== */
+
+/* ---------- 亮色（默认 / 兜底） ---------- */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* 背景层：极柔和的蓝灰渐变 */
+  --app-bg:            #F4F6FB;
+  --app-bg-grad-1:     rgba(214, 226, 248, 0.85);
+  --app-bg-grad-2:     rgba(232, 226, 250, 0.75);
+  --app-bg-grad-3:     rgba(244, 246, 251, 1);
+
+  /* 表面：半透明白色玻璃 */
+  --surface:           rgba(255, 255, 255, 0.72);
+  --surface-raised:    rgba(255, 255, 255, 0.86);
+  --surface-sunken:    rgba(246, 248, 252, 0.66);
+  --surface-solid:     #FFFFFF;
+  --surface-hover:     rgba(255, 255, 255, 0.94);
+  --surface-active:    rgba(255, 255, 255, 1);
+
+  /* 侧边栏（比内容区更透明，形成层次） */
+  --sidebar-bg:        rgba(255, 255, 255, 0.65);
+
+  /* 文字 */
+  --text-primary:      #1D2433;
+  --text-secondary:    #7C879B;
+  --text-tertiary:     #A3ADBE;
+  --text-inverse:      #FFFFFF;
+
+  /* 边框 */
+  --border:            rgba(120, 140, 180, 0.16);
+  --border-strong:     rgba(120, 140, 180, 0.28);
+  --border-highlight:  rgba(255, 255, 255, 0.9);   /* 玻璃顶部内高光 */
+
+  /* 品牌色 */
+  --primary:           #3975F6;
+  --primary-hover:     #2A63E0;
+  --primary-active:    #2455C8;
+  --primary-subtle:    rgba(57, 117, 246, 0.10);
+  --primary-glow:      rgba(57, 117, 246, 0.28);
+
+  --accent:            #7759E8;
+  --accent-subtle:     rgba(119, 89, 232, 0.10);
+
+  /* 语义色 */
+  --success:           #20B978;
+  --success-subtle:    rgba(32, 185, 120, 0.12);
+  --warning:           #E0A030;
+  --warning-subtle:    rgba(224, 160, 48, 0.13);
+  --danger:            #E45462;
+  --danger-subtle:     rgba(228, 84, 98, 0.11);
+
+  /* 阴影：柔和、低对比，不用纯黑 */
+  --shadow-sm:  0 1px 2px rgba(29, 36, 51, 0.04),
+                0 1px 3px rgba(29, 36, 51, 0.03);
+  --shadow-md:  0 2px 8px rgba(29, 36, 51, 0.06),
+                0 8px 24px rgba(29, 36, 51, 0.05);
+  --shadow-lg:  0 8px 20px rgba(29, 36, 51, 0.08),
+                0 24px 56px rgba(29, 36, 51, 0.08);
+  --shadow-glow: 0 0 0 1px var(--border),
+                 0 8px 32px var(--primary-glow);
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(120, 140, 180, 0.28);
+  --scrollbar-thumb-hover: rgba(120, 140, 180, 0.45);
+
+  /* 选中态渐变（侧边栏导航） */
+  --nav-active-bg: linear-gradient(135deg,
+                     rgba(57, 117, 246, 0.13) 0%,
+                     rgba(119, 89, 232, 0.10) 100%);
+  --nav-active-text: var(--primary);
+}
+
+/* ---------- 暗色 ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --app-bg:            #101522;
+  --app-bg-grad-1:     rgba(38, 52, 86, 0.72);
+  --app-bg-grad-2:     rgba(48, 38, 78, 0.62);
+  --app-bg-grad-3:     rgba(16, 21, 34, 1);
+
+  --surface:           rgba(30, 39, 58, 0.76);
+  --surface-raised:    rgba(38, 49, 72, 0.88);
+  --surface-sunken:    rgba(24, 32, 48, 0.72);
+  --surface-solid:     #1C2537;
+  --surface-hover:     rgba(44, 56, 82, 0.92);
+  --surface-active:    rgba(50, 63, 92, 1);
+
+  --sidebar-bg:        rgba(20, 28, 43, 0.82);
+
+  --text-primary:      #EDF2FC;
+  --text-secondary:    #9AA8BE;
+  --text-tertiary:     #6B7A92;
+  --text-inverse:      #101522;
+
+  --border:            rgba(180, 200, 240, 0.12);
+  --border-strong:     rgba(180, 200, 240, 0.22);
+  --border-highlight:  rgba(200, 220, 255, 0.14);
+
+  --primary:           #6C9BFF;
+  --primary-hover:     #85ADFF;
+  --primary-active:    #9BBDFF;
+  --primary-subtle:    rgba(108, 155, 255, 0.14);
+  --primary-glow:      rgba(108, 155, 255, 0.35);
+
+  --accent:            #A18AFF;
+  --accent-subtle:     rgba(161, 138, 255, 0.14);
+
+  --success:           #35D69A;
+  --success-subtle:    rgba(53, 214, 154, 0.15);
+  --warning:           #F0B44A;
+  --warning-subtle:    rgba(240, 180, 74, 0.15);
+  --danger:            #FF7180;
+  --danger-subtle:     rgba(255, 113, 128, 0.15);
+
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.32),
+                0 8px 28px rgba(0, 0, 0, 0.28);
+  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.38),
+                0 28px 64px rgba(0, 0, 0, 0.40);
+  --shadow-glow: 0 0 0 1px var(--border),
+                 0 8px 36px var(--primary-glow);
+
+  --scrollbar-thumb: rgba(180, 200, 240, 0.20);
+  --scrollbar-thumb-hover: rgba(180, 200, 240, 0.34);
+
+  --nav-active-bg: linear-gradient(135deg,
+                     rgba(108, 155, 255, 0.20) 0%,
+                     rgba(161, 138, 255, 0.16) 100%);
+  --nav-active-text: #A8C4FF;
+}
+
+/* ---------- 跟随系统 ---------- */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    color-scheme: dark;
+
+    --app-bg:            #101522;
+    --app-bg-grad-1:     rgba(38, 52, 86, 0.72);
+    --app-bg-grad-2:     rgba(48, 38, 78, 0.62);
+    --app-bg-grad-3:     rgba(16, 21, 34, 1);
+
+    --surface:           rgba(30, 39, 58, 0.76);
+    --surface-raised:    rgba(38, 49, 72, 0.88);
+    --surface-sunken:    rgba(24, 32, 48, 0.72);
+    --surface-solid:     #1C2537;
+    --surface-hover:     rgba(44, 56, 82, 0.92);
+    --surface-active:    rgba(50, 63, 92, 1);
+
+    --sidebar-bg:        rgba(20, 28, 43, 0.82);
+
+    --text-primary:      #EDF2FC;
+    --text-secondary:    #9AA8BE;
+    --text-tertiary:     #6B7A92;
+    --text-inverse:      #101522;
+
+    --border:            rgba(180, 200, 240, 0.12);
+    --border-strong:     rgba(180, 200, 240, 0.22);
+    --border-highlight:  rgba(200, 220, 255, 0.14);
+
+    --primary:           #6C9BFF;
+    --primary-hover:     #85ADFF;
+    --primary-active:    #9BBDFF;
+    --primary-subtle:    rgba(108, 155, 255, 0.14);
+    --primary-glow:      rgba(108, 155, 255, 0.35);
+
+    --accent:            #A18AFF;
+    --accent-subtle:     rgba(161, 138, 255, 0.14);
+
+    --success:           #35D69A;
+    --success-subtle:    rgba(53, 214, 154, 0.15);
+    --warning:           #F0B44A;
+    --warning-subtle:    rgba(240, 180, 74, 0.15);
+    --danger:            #FF7180;
+    --danger-subtle:     rgba(255, 113, 128, 0.15);
+
+    --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.32),
+                  0 8px 28px rgba(0, 0, 0, 0.28);
+    --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.38),
+                  0 28px 64px rgba(0, 0, 0, 0.40);
+    --shadow-glow: 0 0 0 1px var(--border),
+                   0 8px 36px var(--primary-glow);
+
+    --scrollbar-thumb: rgba(180, 200, 240, 0.20);
+    --scrollbar-thumb-hover: rgba(180, 200, 240, 0.34);
+
+    --nav-active-bg: linear-gradient(135deg,
+                       rgba(108, 155, 255, 0.20) 0%,
+                       rgba(161, 138, 255, 0.16) 100%);
+    --nav-active-text: #A8C4FF;
+  }
+}
